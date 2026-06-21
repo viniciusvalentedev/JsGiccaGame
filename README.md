@@ -1,6 +1,6 @@
 # Momoris Gigica 💕
 
-Um jogo de aventura pixel art feito com muito amor pelo Vivi para a Giovanna, comemorando 4 anos juntos.
+Um jogo de aventura pixel art feito com muito amor por Vinicius para a Giovanna, comemorando 4 anos juntos.
 
 ---
 
@@ -91,4 +91,4 @@ npm run preview
 
 ---
 
-Feito com amor pelo Vivi para a Giovanna. 💕
+Feito com amor por Vinicius para a Giovanna. 💕

@@ -1092,12 +1092,12 @@ k.scene("missao1", () => {
 
   // ── Sequência inicial: título → diálogo ──────────────────────────────
   const titleShadow = k.add([
-    k.text("Missão 1: Giovanna", { size: fs(16), font: "pressstart2p", align: "center" }),
+    k.text("Missão 1: Introdução", { size: fs(16), font: "pressstart2p", align: "center" }),
     k.pos(SW / 2 + 2 * SC, SH / 2 + 2 * SC),
     k.anchor("center"), k.color(0, 0, 0), k.opacity(0), k.z(39), k.fixed(),
   ]);
   const titleLabel = k.add([
-    k.text("Missão 1: Giovanna", { size: fs(16), font: "pressstart2p", align: "center" }),
+    k.text("Missão 1: Introdução", { size: fs(16), font: "pressstart2p", align: "center" }),
     k.pos(SW / 2, SH / 2),
     k.anchor("center"), k.color(255, 255, 255), k.opacity(0), k.z(40), k.fixed(),
   ]);
@@ -1433,6 +1433,69 @@ k.scene("missao2", () => {
   let cutsceneReached = false;
   let exitTriggered   = false;
 
+  // ── Introdução cinemática ────────────────────────────────────────────────
+  let introFinished = false;
+
+  const introOverlay = k.add([
+    k.rect(SW, SH), k.pos(0, 0),
+    k.color(0, 0, 0), k.opacity(1),
+    k.z(90), k.fixed(),
+  ]);
+
+  const introText1 = k.add([
+    k.text("4 de marco de 2022", { size: fs(14), font: "pressstart2p" }),
+    k.pos(SW / 2, SH / 2 - 30 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0),
+    k.z(91), k.fixed(),
+  ]);
+
+  const introText2 = k.add([
+    k.text("Associacao Atletica Caldense", { size: fs(10), font: "pressstart2p", width: 380 * SC, align: "center" }),
+    k.pos(SW / 2, SH / 2 + 20 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0),
+    k.z(91), k.fixed(),
+  ]);
+
+  const introText3 = k.add([
+    k.text("Vivi estava jogando futebol e", { size: fs(10), font: "pressstart2p", width: 380 * SC, align: "center" }),
+    k.pos(SW / 2, SH / 2 - 20 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0),
+    k.z(91), k.fixed(),
+  ]);
+
+  const introText4 = k.add([
+    k.text("Gigi estava passeando", { size: fs(10), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH / 2 + 20 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0),
+    k.z(91), k.fixed(),
+  ]);
+
+  k.wait(0,    () => k.tween(0, 1, 0.8, v => { introText1.opacity = v; }));
+  k.wait(1.5,  () => k.tween(0, 1, 0.8, v => { introText2.opacity = v; }));
+  k.wait(5.0,  () => {
+    k.tween(1, 0, 0.6, v => { introText1.opacity = v; });
+    k.tween(1, 0, 0.6, v => { introText2.opacity = v; });
+  });
+  k.wait(6.5,  () => k.tween(0, 1, 0.8, v => { introText3.opacity = v; }));
+  k.wait(8.0,  () => k.tween(0, 1, 0.8, v => { introText4.opacity = v; }));
+  k.wait(12.0, () => {
+    k.tween(1, 0, 0.6, v => { introText3.opacity = v; });
+    k.tween(1, 0, 0.6, v => { introText4.opacity = v; });
+    k.tween(1, 0, 1.0, v => { introOverlay.opacity = v; });
+  });
+  k.wait(13.5, () => {
+    if (introOverlay.exists()) introOverlay.destroy();
+    if (introText1.exists())   introText1.destroy();
+    if (introText2.exists())   introText2.destroy();
+    if (introText3.exists())   introText3.destroy();
+    if (introText4.exists())   introText4.destroy();
+    introFinished = true;
+  });
+
   // ── Joystick virtual ─────────────────────────────────────────────────────
   const joystick = controlMode === "joystick"
     ? makeVirtualJoystick(() => paused || phase !== "playing")
@@ -1641,19 +1704,33 @@ k.scene("missao2", () => {
     k.color(0, 0, 0), k.opacity(0.55), k.z(20), k.fixed(),
   ]);
   const hudShadow = k.add([
-    k.text("⚽ Gols: 0/10", { size: fs(10), font: "pressstart2p" }),
-    k.pos(13 * SC + 1, 15 * SC + 1),
+    k.text("Gols: 0/10", { size: fs(10), font: "pressstart2p" }),
+    k.pos(13 * SC + 1, 15 * SC + 1),  
     k.color(0, 0, 0), k.opacity(0.7), k.z(20), k.fixed(),
   ]);
   const hudLabel = k.add([
-    k.text("⚽ Gols: 0/10", { size: fs(10), font: "pressstart2p" }),
+    k.text("Gols: 0/10", { size: fs(10), font: "pressstart2p" }),
     k.pos(13 * SC, 15 * SC),
     k.color(255, 255, 255), k.z(21), k.fixed(),
   ]);
   function updateHUD() {
-    hudLabel.text  = `⚽ Gols: ${goals}/10`;
-    hudShadow.text = `⚽ Gols: ${goals}/10`;
+    hudLabel.text  = `Gols: ${goals}/10`;
+    hudShadow.text = `Gols: ${goals}/10`;
   }
+
+  // ── Texto objetivo ────────────────────────────────────────────────────────
+  const missionObjShadow = k.add([
+    k.text("Faça gols para impressionar ela", { size: fs(10), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2 + 2 * SC, SH - 16 * SC),
+    k.anchor("center"), k.color(0, 0, 0), k.opacity(0), k.z(19), k.fixed(),
+  ]);
+  const missionObj = k.add([
+    k.text("Faça gols para impressionar ela", { size: fs(10), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH - 18 * SC),
+    k.anchor("center"), k.color(255, 215, 0), k.opacity(0), k.z(20), k.fixed(),
+  ]);
+  k.wait(13.5, () => k.tween(0, 1, 0.8, v => { missionObj.opacity = v; missionObjShadow.opacity = v; }));
+  k.wait(17.5, () => k.tween(1, 0, 0.8, v => { missionObj.opacity = v; missionObjShadow.opacity = v; }));
 
   // ── Balão de fala ────────────────────────────────────────────────────────
   function showBubble(worldObj, text, duration) {
@@ -1703,7 +1780,7 @@ k.scene("missao2", () => {
     updateHUD();
     playWhistle();
     playGoalSound();
-    showBubble(vivi, "GOL! ⚽", 2.5);
+    showBubble(vivi, "GOL!", 2.5);
 
     if (goals >= 10) {
       phase           = "cutscene";
@@ -1755,6 +1832,7 @@ k.scene("missao2", () => {
 
   // ── Loop principal ───────────────────────────────────────────────────────
   k.onUpdate(() => {
+    if (!introFinished) return;
     if (paused) return;
     const dt = k.dt();
 

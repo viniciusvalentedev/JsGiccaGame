@@ -1,13 +1,23 @@
 import kaplay from "kaplay";
 
 const k = kaplay({
-  width: 480,
-  height: 320,
-  letterbox: true,
+  width: window.innerWidth,
+  height: window.innerHeight,
+  letterbox: false,
+  stretch: true,
   background: [100, 190, 70],
   touchToMouse: true,
   canvas: document.querySelector("canvas") || undefined,
 });
+
+const SW = window.innerWidth;
+const SH = window.innerHeight;
+
+// Escala baseada numa resolução de referência de 480x320
+const SCALE_X = SW / 480;
+const SCALE_Y = SH / 320;
+const SC = Math.min(SCALE_X, SCALE_Y);
+function fs(size) { return Math.round(size * SC); }
 
 // Fonte pixel art (woff2 direto do CDN do Google Fonts)
 k.loadFont(
@@ -36,9 +46,6 @@ k.loadSprite("bird",      "sprites/bird.png",      { sliceX: 2, sliceY: 1, anims
 k.loadSprite("butterfly", "sprites/butterfly.png", { sliceX: 2, sliceY: 1, anims: { fly: { from: 0, to: 1, loop: true, speed: 5 } } });
 k.loadSprite("bouquet",   "sprites/bouquet.png",   { sliceX: 4, sliceY: 1, anims: { sway: { from: 0, to: 3, loop: true, speed: 4 } } });
 
-const SW = 480;
-const SH = 320;
-
 // "keyboard" em desktops, "joystick" em dispositivos touch — detectado automaticamente
 let controlMode = window.matchMedia("(pointer: coarse)").matches ? "joystick" : "keyboard";
 
@@ -55,7 +62,7 @@ const messages = [
 // ── Joystick Virtual ─────────────────────────────────────────────────────
 // getBlocked: () => bool — retorna true quando o input deve ser ignorado
 function makeVirtualJoystick(getBlocked) {
-  const BASE_X = 65;
+  const BASE_X = SW - 65;
   const BASE_Y = SH - 70;
   const BASE_R = 44;
   const KNOB_R = 20;
@@ -142,7 +149,7 @@ function makePauseOverlay(onResume) {
 
   // Borda do painel
   add(k.add([
-    k.rect(258, 182, { radius: 16 }),
+    k.rect(258 * SC, 182 * SC, { radius: 16 * SC }),
     k.pos(SW / 2, SH / 2),
     k.anchor("center"),
     k.color(110, 50, 155),
@@ -151,7 +158,7 @@ function makePauseOverlay(onResume) {
 
   // Fundo do painel
   add(k.add([
-    k.rect(250, 174, { radius: 13 }),
+    k.rect(250 * SC, 174 * SC, { radius: 13 * SC }),
     k.pos(SW / 2, SH / 2),
     k.anchor("center"),
     k.color(32, 8, 52),
@@ -160,8 +167,8 @@ function makePauseOverlay(onResume) {
 
   // Título
   add(k.add([
-    k.text("PAUSE", { size: 14, font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2, SH / 2 - 56),
+    k.text("PAUSE", { size: fs(14), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH / 2 - 56 * SC),
     k.anchor("center"),
     k.color(210, 185, 255),
     k.z(103),
@@ -169,16 +176,16 @@ function makePauseOverlay(onResume) {
 
   // Botão Continuar (verde)
   const continueBtn = add(k.add([
-    k.rect(210, 40, { radius: 8 }),
-    k.pos(SW / 2, SH / 2 + 4),
+    k.rect(210 * SC, 40 * SC, { radius: 8 * SC }),
+    k.pos(SW / 2, SH / 2 + 4 * SC),
     k.anchor("center"),
     k.color(45, 160, 65),
     k.area(),
     k.z(103),
   ]));
   add(k.add([
-    k.text("Continuar", { size: 9, font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2, SH / 2 + 4),
+    k.text("Continuar", { size: fs(9), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH / 2 + 4 * SC),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(104),
@@ -193,16 +200,16 @@ function makePauseOverlay(onResume) {
 
   // Botão Sair (vermelho)
   const exitBtn = add(k.add([
-    k.rect(210, 40, { radius: 8 }),
-    k.pos(SW / 2, SH / 2 + 57),
+    k.rect(210 * SC, 40 * SC, { radius: 8 * SC }),
+    k.pos(SW / 2, SH / 2 + 57 * SC),
     k.anchor("center"),
     k.color(185, 42, 52),
     k.area(),
     k.z(103),
   ]));
   add(k.add([
-    k.text("Sair ao Menu", { size: 9, font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2, SH / 2 + 57),
+    k.text("Sair ao Menu", { size: fs(9), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH / 2 + 57 * SC),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(104),
@@ -265,8 +272,8 @@ k.scene("menu", () => {
 
   // Borda do painel (rosa mais escuro)
   k.add([
-    k.rect(294, 256, { radius: 18 }),
-    k.pos(SW / 2, SH / 2 + 10),
+    k.rect(SW * 0.62, SH * 0.82, { radius: 18 }),
+    k.pos(SW / 2, SH / 2),
     k.anchor("center"),
     k.color(240, 110, 160),
     k.opacity(0.97),
@@ -275,8 +282,8 @@ k.scene("menu", () => {
 
   // Painel rosado
   k.add([
-    k.rect(286, 248, { radius: 15 }),
-    k.pos(SW / 2, SH / 2 + 10),
+    k.rect(SW * 0.60, SH * 0.80, { radius: 15 }),
+    k.pos(SW / 2, SH / 2),
     k.anchor("center"),
     k.color(255, 215, 232),
     k.opacity(0.93),
@@ -285,8 +292,8 @@ k.scene("menu", () => {
 
   // Título principal
   k.add([
-    k.text("Momoris\nGigica", { size: 22, font: "pressstart2p", align: "center", width: 268 }),
-    k.pos(SW / 2, SH / 2 - 64),
+    k.text("Momoris\nGigica", { size: fs(22), font: "pressstart2p", align: "center", width: SW * 0.55 }),
+    k.pos(SW / 2, SH * 0.22),
     k.anchor("center"),
     k.color(170, 28, 88),
     k.z(6),
@@ -294,8 +301,8 @@ k.scene("menu", () => {
 
   // Subtítulo
   k.add([
-    k.text("4 anos de amor", { size: 8, font: "pressstart2p", align: "center", width: 268 }),
-    k.pos(SW / 2, SH / 2 + 14),
+    k.text("4 anos de amor", { size: fs(8), font: "pressstart2p", align: "center", width: SW * 0.55 }),
+    k.pos(SW / 2, SH * 0.40),
     k.anchor("center"),
     k.color(205, 65, 125),
     k.z(6),
@@ -303,16 +310,16 @@ k.scene("menu", () => {
 
   // Botão Iniciar
   const startBtn = k.add([
-    k.rect(214, 44, { radius: 10 }),
-    k.pos(SW / 2, SH / 2 + 74),
+    k.rect(SW * 0.44, SH * 0.11, { radius: 10 }),
+    k.pos(SW / 2, SH * 0.52),
     k.anchor("center"),
     k.color(250, 115, 162),
     k.area(),
     k.z(6),
   ]);
   k.add([
-    k.text("Iniciar", { size: 12, font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2, SH / 2 + 74),
+    k.text("Iniciar", { size: fs(12), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH * 0.52),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(7),
@@ -328,10 +335,36 @@ k.scene("menu", () => {
   });
   startBtn.onClick(() => { k.go("abertura"); });
 
+  // Botão Selecionar Fase
+  const faseBtn = k.add([
+    k.rect(SW * 0.44, SH * 0.10, { radius: 10 }),
+    k.pos(SW / 2, SH * 0.65),
+    k.anchor("center"),
+    k.color(250, 155, 80),
+    k.area(),
+    k.z(6),
+  ]);
+  k.add([
+    k.text("Selecionar Fase", { size: fs(8), font: "pressstart2p", align: "center", width: SW * 0.40 }),
+    k.pos(SW / 2, SH * 0.65),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+    k.z(7),
+  ]);
+  faseBtn.onHover(() => {
+    faseBtn.color = k.rgb(255, 175, 60);
+    document.body.style.cursor = "pointer";
+  });
+  faseBtn.onHoverEnd(() => {
+    faseBtn.color = k.rgb(250, 155, 80);
+    document.body.style.cursor = "default";
+  });
+  faseBtn.onClick(() => { k.go("selecionar_fase"); });
+
   // Botão Selecionar Controles
   const ctrlBtn = k.add([
-    k.rect(214, 36, { radius: 10 }),
-    k.pos(SW / 2, SH / 2 + 112),
+    k.rect(SW * 0.44, SH * 0.09, { radius: 10 }),
+    k.pos(SW / 2, SH * 0.77),
     k.anchor("center"),
     k.color(120, 58, 185),
     k.area(),
@@ -340,9 +373,9 @@ k.scene("menu", () => {
   const ctrlLabel = k.add([
     k.text(
       controlMode === "joystick" ? "Controles: Joystick" : "Controles: Teclado",
-      { size: 7, font: "pressstart2p", align: "center", width: 200 }
+      { size: fs(7), font: "pressstart2p", align: "center", width: SW * 0.40 }
     ),
-    k.pos(SW / 2, SH / 2 + 112),
+    k.pos(SW / 2, SH * 0.77),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(7),
@@ -445,18 +478,18 @@ k.scene("abertura", () => {
 
   // ── Textos da história ───────────────────────────────────────────────
   const textPositions = [
-    { x: SW / 2, y: 34      },   // topo
-    { x: SW / 2, y: SH - 52 },   // base
-    { x: SW / 2, y: 34      },   // topo
-    { x: SW / 2, y: SH - 52 },   // base
-    { x: SW / 2, y: 34      },   // topo
-    { x: SW / 2, y: SH - 52 },   // base
-    { x: SW / 2, y: SH / 2  },   // centro
+    { x: SW / 2, y: 34 * SC       },   // topo
+    { x: SW / 2, y: SH - 52 * SC  },   // base
+    { x: SW / 2, y: 34 * SC       },   // topo
+    { x: SW / 2, y: SH - 52 * SC  },   // base
+    { x: SW / 2, y: 34 * SC       },   // topo
+    { x: SW / 2, y: SH - 52 * SC  },   // base
+    { x: SW / 2, y: SH / 2        },   // centro
   ];
 
   const textBg = k.add([
-    k.rect(400, 60, { radius: 12 }),
-    k.pos(SW / 2, 34),
+    k.rect(400 * SC, 60 * SC, { radius: 12 * SC }),
+    k.pos(SW / 2, 34 * SC),
     k.anchor("center"),
     k.color(18, 4, 32),
     k.opacity(0),
@@ -464,8 +497,8 @@ k.scene("abertura", () => {
   ]);
 
   const textLabel = k.add([
-    k.text("", { size: 18, align: "center", width: 370 }),
-    k.pos(SW / 2, 34),
+    k.text("", { size: fs(18), align: "center", width: 370 * SC }),
+    k.pos(SW / 2, 34 * SC),
     k.anchor("center"),
     k.color(255, 235, 255),
     k.opacity(0),
@@ -709,12 +742,12 @@ k.scene("missao1", () => {
 
   // ── HUD flores ───────────────────────────────────────────────────────
   const hudShadow = k.add([
-    k.text("\u{1F338} 0/10", { size: 10, font: "pressstart2p" }),
-    k.pos(10, 10), k.color(0, 0, 0), k.opacity(0.7), k.z(19), k.fixed(),
+    k.text("\u{1F338} 0/10", { size: fs(10), font: "pressstart2p" }),
+    k.pos(10 * SC, 10 * SC), k.color(0, 0, 0), k.opacity(0.7), k.z(19), k.fixed(),
   ]);
   const hudLabel = k.add([
-    k.text("\u{1F338} 0/10", { size: 10, font: "pressstart2p" }),
-    k.pos(8, 8), k.color(255, 255, 255), k.z(20), k.fixed(),
+    k.text("\u{1F338} 0/10", { size: fs(10), font: "pressstart2p" }),
+    k.pos(8 * SC, 8 * SC), k.color(255, 255, 255), k.z(20), k.fixed(),
   ]);
   hudLabel.hidden  = true;
   hudShadow.hidden = true;
@@ -726,13 +759,13 @@ k.scene("missao1", () => {
 
   // ── Texto objetivo ────────────────────────────────────────────────────
   const missionObjShadow = k.add([
-    k.text("\u{1F338} Colete flores.", { size: 10, font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2 + 2, SH - 16),
+    k.text("\u{1F338} Colete flores.", { size: fs(10), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2 + 2 * SC, SH - 16 * SC),
     k.anchor("center"), k.color(0, 0, 0), k.opacity(0), k.z(19), k.fixed(),
   ]);
   const missionObj = k.add([
-    k.text("\u{1F338} Colete flores.", { size: 10, font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2, SH - 18),
+    k.text("\u{1F338} Colete flores.", { size: fs(10), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH - 18 * SC),
     k.anchor("center"), k.color(255, 215, 0), k.opacity(0), k.z(20), k.fixed(),
   ]);
 
@@ -743,33 +776,33 @@ k.scene("missao1", () => {
   ]);
 
   // ── Caixa de diálogo ─────────────────────────────────────────────────
-  const DW = 440;
-  const DH = 90;
-  const DY = SH - DH / 2 - 12;
+  const DW = 440 * SC;
+  const DH = 90 * SC;
+  const DY = SH - DH / 2 - 10 * SC;
 
   const dialogBorder = k.add([
-    k.rect(DW + 4, DH + 4, { radius: 12 }),
+    k.rect(DW + 4 * SC, DH + 4 * SC, { radius: 12 * SC }),
     k.pos(SW / 2, DY), k.anchor("center"),
     k.color(255, 105, 180), k.opacity(0.92), k.z(29), k.fixed(),
   ]);
   const dialogBg = k.add([
-    k.rect(DW, DH, { radius: 10 }),
+    k.rect(DW, DH, { radius: 10 * SC }),
     k.pos(SW / 2, DY), k.anchor("center"),
     k.color(18, 4, 32), k.opacity(0.9), k.z(30), k.fixed(),
   ]);
   const dialogName = k.add([
-    k.text("Giovanna", { size: 9, font: "pressstart2p" }),
-    k.pos(SW / 2 - DW / 2 + 12, DY - DH / 2 - 2),
+    k.text("Giovanna", { size: fs(9), font: "pressstart2p" }),
+    k.pos(SW / 2 - DW / 2 + 12 * SC, DY - DH / 2 + 10 * SC),
     k.color(255, 105, 180), k.z(31), k.fixed(),
   ]);
   const dialogText = k.add([
-    k.text("", { size: 8, font: "pressstart2p", width: DW - 24, align: "left" }),
-    k.pos(SW / 2 - DW / 2 + 12, DY - DH / 2 + 12),
+    k.text("", { size: fs(8), font: "pressstart2p", width: DW - 24 * SC, align: "left" }),
+    k.pos(SW / 2 - DW / 2 + 12 * SC, DY - DH / 2 + 26 * SC),
     k.color(255, 245, 255), k.z(31), k.fixed(),
   ]);
   const dialogArrow = k.add([
-    k.text("▼", { size: 8, font: "pressstart2p" }),
-    k.pos(SW / 2 + DW / 2 - 18, DY + DH / 2 - 14),
+    k.text("▼", { size: fs(8), font: "pressstart2p" }),
+    k.pos(SW / 2 + DW / 2 - 18 * SC, DY + DH / 2 - 14 * SC),
     k.color(255, 255, 255), k.opacity(0), k.z(31), k.fixed(),
   ]);
 
@@ -985,12 +1018,12 @@ k.scene("missao1", () => {
 
   // ── Sequência inicial: título → diálogo ──────────────────────────────
   const titleShadow = k.add([
-    k.text("Missão 1: Giovanna", { size: 16, font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2 + 2, SH / 2 + 2),
+    k.text("Missão 1: Giovanna", { size: fs(16), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2 + 2 * SC, SH / 2 + 2 * SC),
     k.anchor("center"), k.color(0, 0, 0), k.opacity(0), k.z(39), k.fixed(),
   ]);
   const titleLabel = k.add([
-    k.text("Missão 1: Giovanna", { size: 16, font: "pressstart2p", align: "center" }),
+    k.text("Missão 1: Giovanna", { size: fs(16), font: "pressstart2p", align: "center" }),
     k.pos(SW / 2, SH / 2),
     k.anchor("center"), k.color(255, 255, 255), k.opacity(0), k.z(40), k.fixed(),
   ]);
@@ -1042,7 +1075,7 @@ k.scene("celebracao1", () => {
   const particleEmojis = ["\u{1F338}", "\u{1F495}", "\u{1F338}", "\u{1F495}", "✨"];
   k.loop(0.28, () => {
     const emoji = particleEmojis[Math.floor(Math.random() * particleEmojis.length)];
-    const size  = k.rand(12, 20);
+    const size  = k.rand(12, 20) * SC;
     const px    = k.rand(10, SW - 10);
     const spd   = k.rand(60, 120);
     const p     = k.add([
@@ -1071,13 +1104,13 @@ k.scene("celebracao1", () => {
 
   // ── Título ────────────────────────────────────────────────────────────
   const titleShadow = k.add([
-    k.text("Meu buquê ficou lindo!", { size: 12, font: "pressstart2p", align: "center", width: 420 }),
-    k.pos(SW / 2 + 2, 57),
+    k.text("Meu buquê ficou lindo!", { size: fs(12), font: "pressstart2p", align: "center", width: 420 * SC }),
+    k.pos(SW / 2 + 2 * SC, 57 * SC),
     k.anchor("center"), k.color(0, 0, 0), k.opacity(0), k.z(9), k.fixed(),
   ]);
   const titleLabel = k.add([
-    k.text("Meu buquê ficou lindo!", { size: 12, font: "pressstart2p", align: "center", width: 420 }),
-    k.pos(SW / 2, 55),
+    k.text("Meu buquê ficou lindo!", { size: fs(12), font: "pressstart2p", align: "center", width: 420 * SC }),
+    k.pos(SW / 2, 55 * SC),
     k.anchor("center"), k.color(204, 34, 119), k.opacity(0), k.z(10), k.fixed(),
   ]);
   k.wait(0.6, () => {
@@ -1086,8 +1119,8 @@ k.scene("celebracao1", () => {
 
   // ── Estatísticas ──────────────────────────────────────────────────────
   const statsLabel = k.add([
-    k.text("\u{1F338} +10 flores coletadas", { size: 8, font: "pressstart2p", align: "center", width: 420 }),
-    k.pos(SW / 2, 248),
+    k.text("\u{1F338} +10 flores coletadas", { size: fs(8), font: "pressstart2p", align: "center", width: 420 * SC }),
+    k.pos(SW / 2, 248 * SC),
     k.anchor("center"), k.color(255, 110, 180), k.opacity(0), k.z(10), k.fixed(),
   ]);
   k.wait(1.2, () => {
@@ -1096,8 +1129,8 @@ k.scene("celebracao1", () => {
 
   // ── Botão Próxima Fase ────────────────────────────────────────────────
   const nextBtn = k.add([
-    k.rect(222, 40, { radius: 10 }),
-    k.pos(SW / 2, 290),
+    k.rect(222 * SC, 40 * SC, { radius: 10 * SC }),
+    k.pos(SW / 2, 290 * SC),
     k.anchor("center"),
     k.color(250, 115, 162),
     k.opacity(0),
@@ -1106,8 +1139,8 @@ k.scene("celebracao1", () => {
     k.fixed(),
   ]);
   const nextLabel = k.add([
-    k.text("► Próxima Fase", { size: 10, font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2, 290),
+    k.text("► Próxima Fase", { size: fs(10), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, 290 * SC),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.opacity(0),
@@ -1128,6 +1161,135 @@ k.scene("celebracao1", () => {
       document.body.style.cursor = "default";
       k.go("menu");
     });
+  });
+});
+
+// ── Cena: SELECIONAR FASE ────────────────────────────────────────────────
+k.scene("selecionar_fase", () => {
+  const TILE  = 16;
+  const SCALE = 2;
+  const TSIZE = TILE * SCALE;
+  const COLS  = Math.ceil(SW / TSIZE) + 1;
+  const ROWS  = Math.ceil(SH / TSIZE) + 1;
+
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const isFlower = Math.random() < 0.15;
+      k.add([
+        k.sprite(isFlower ? "flower" : "grass"),
+        k.pos(col * TSIZE, row * TSIZE),
+        k.scale(SCALE),
+        k.z(0),
+      ]);
+    }
+  }
+
+  const cornerSpawns = [
+    { x: 40,      y: 40      },
+    { x: SW - 40, y: 40      },
+    { x: 40,      y: SH - 40 },
+    { x: SW - 40, y: SH - 40 },
+  ];
+  cornerSpawns.forEach(({ x, y }) => {
+    const spd = k.rand(18, 32);
+    const dir = x < SW / 2 ? 1 : -1;
+    const bt  = k.add([
+      k.sprite("butterfly", { anim: "fly" }),
+      k.pos(x, y), k.scale(1.6), k.z(1),
+      { spd, dir, ox: x },
+    ]);
+    bt.onUpdate(() => {
+      bt.move(bt.spd * bt.dir, Math.sin(k.time() * 2 + bt.ox * 0.01) * 14);
+      if (bt.pos.x > SW + 24) bt.pos.x = -24;
+      if (bt.pos.x < -24)     bt.pos.x = SW + 24;
+    });
+  });
+
+  // Borda do painel
+  k.add([
+    k.rect(280 * SC, 220 * SC, { radius: 18 * SC }),
+    k.pos(SW / 2, SH / 2),
+    k.anchor("center"),
+    k.color(240, 110, 160),
+    k.opacity(0.97),
+    k.z(4),
+  ]);
+
+  // Painel rosado
+  k.add([
+    k.rect(272 * SC, 212 * SC, { radius: 15 * SC }),
+    k.pos(SW / 2, SH / 2),
+    k.anchor("center"),
+    k.color(255, 215, 232),
+    k.opacity(0.93),
+    k.z(5),
+  ]);
+
+  // Título
+  k.add([
+    k.text("Selecionar\nFase", { size: fs(16), font: "pressstart2p", align: "center", width: 252 * SC }),
+    k.pos(SW / 2, SH / 2 - 72 * SC),
+    k.anchor("center"),
+    k.color(170, 28, 88),
+    k.z(6),
+  ]);
+
+  // Botão Fase 1
+  const fase1Btn = k.add([
+    k.rect(230 * SC, 44 * SC, { radius: 10 * SC }),
+    k.pos(SW / 2, SH / 2 + 10 * SC),
+    k.anchor("center"),
+    k.color(250, 115, 162),
+    k.area(),
+    k.z(6),
+  ]);
+  k.add([
+    k.text("Fase 1: A Surpresa", { size: fs(8), font: "pressstart2p", align: "center", width: 215 * SC }),
+    k.pos(SW / 2, SH / 2 + 10 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+    k.z(7),
+  ]);
+  fase1Btn.onHover(() => {
+    fase1Btn.color = k.rgb(255, 75, 130);
+    document.body.style.cursor = "pointer";
+  });
+  fase1Btn.onHoverEnd(() => {
+    fase1Btn.color = k.rgb(250, 115, 162);
+    document.body.style.cursor = "default";
+  });
+  fase1Btn.onClick(() => {
+    document.body.style.cursor = "default";
+    k.go("missao1");
+  });
+
+  // Botão Voltar
+  const voltarBtn = k.add([
+    k.rect(230 * SC, 36 * SC, { radius: 10 * SC }),
+    k.pos(SW / 2, SH / 2 + 70 * SC),
+    k.anchor("center"),
+    k.color(130, 130, 145),
+    k.area(),
+    k.z(6),
+  ]);
+  k.add([
+    k.text("< Voltar", { size: fs(9), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH / 2 + 70 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+    k.z(7),
+  ]);
+  voltarBtn.onHover(() => {
+    voltarBtn.color = k.rgb(160, 160, 175);
+    document.body.style.cursor = "pointer";
+  });
+  voltarBtn.onHoverEnd(() => {
+    voltarBtn.color = k.rgb(130, 130, 145);
+    document.body.style.cursor = "default";
+  });
+  voltarBtn.onClick(() => {
+    document.body.style.cursor = "default";
+    k.go("menu");
   });
 });
 

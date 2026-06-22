@@ -78,6 +78,12 @@ k.loadSprite("npc_woman",       "sprites/npc_woman.png",       { sliceX: 4, slic
 }});
 k.loadSprite("ball",            "sprites/ball.png",            { sliceX: 2, sliceY: 1, anims: { spin: { from: 0, to: 1, loop: true, speed: 6 } } });
 k.loadSprite("scenario_tiles",  "sprites/scenario_tiles.png",  { sliceX: 8, sliceY: 1 });
+k.loadSprite("cena3_bg",         "sprites/cena3_background.png");
+k.loadSprite("sprite_poste",     "sprites/sprite_poste.png",     { sliceX: 4, sliceY: 1, anims: { "pulse": { from: 0, to: 3, loop: true, speed: 3 } } });
+k.loadSprite("sprite_pilar",     "sprites/sprite_pilar.png",     { sliceX: 4, sliceY: 1, anims: { "light": { from: 0, to: 3, loop: true, speed: 2 } } });
+k.loadSprite("sprite_estrela_a", "sprites/sprite_estrela_a.png", { sliceX: 6, sliceY: 1, anims: { "blink": { from: 0, to: 5, loop: true, speed: 4 } } });
+k.loadSprite("sprite_estrela_b", "sprites/sprite_estrela_b.png", { sliceX: 6, sliceY: 1, anims: { "blink": { from: 0, to: 5, loop: true, speed: 3 } } });
+k.loadSprite("sprite_estrela_c", "sprites/sprite_estrela_c.png", { sliceX: 8, sliceY: 1, anims: { "blink": { from: 0, to: 7, loop: true, speed: 5 } } });
 
 // "keyboard" em desktops, "joystick" em dispositivos touch — detectado automaticamente
 let controlMode = window.matchMedia("(pointer: coarse)").matches ? "joystick" : "keyboard";
@@ -1443,7 +1449,7 @@ k.scene("missao2", () => {
   ]);
 
   const introText1 = k.add([
-    k.text("4 de marco de 2022", { size: fs(14), font: "pressstart2p" }),
+    k.text("4 de março de 2022", { size: fs(14), font: "pressstart2p" }),
     k.pos(SW / 2, SH / 2 - 30 * SC),
     k.anchor("center"),
     k.color(255, 255, 255), k.opacity(0),
@@ -1451,7 +1457,7 @@ k.scene("missao2", () => {
   ]);
 
   const introText2 = k.add([
-    k.text("Associacao Atletica Caldense", { size: fs(10), font: "pressstart2p", width: 380 * SC, align: "center" }),
+    k.text("Associação Atlética Caldense", { size: fs(10), font: "pressstart2p", width: 380 * SC, align: "center" }),
     k.pos(SW / 2, SH / 2 + 20 * SC),
     k.anchor("center"),
     k.color(255, 255, 255), k.opacity(0),
@@ -1705,7 +1711,7 @@ k.scene("missao2", () => {
   ]);
   const hudShadow = k.add([
     k.text("Gols: 0/10", { size: fs(10), font: "pressstart2p" }),
-    k.pos(13 * SC + 1, 15 * SC + 1),  
+    k.pos(13 * SC + 1, 15 * SC + 1),
     k.color(0, 0, 0), k.opacity(0.7), k.z(20), k.fixed(),
   ]);
   const hudLabel = k.add([
@@ -2005,7 +2011,7 @@ k.scene("missao2", () => {
       if (!exitTriggered && vivi.pos.x + world.pos.x > SW + 100) {
         exitTriggered = true;
         k.tween(0, 1, 1.2, v => { fadeOverlay.opacity = v; },
-          () => { k.go("menu"); });
+          () => { k.go("missao3"); });
       }
     }
 
@@ -2067,6 +2073,381 @@ k.scene("missao2", () => {
         !k.isKeyDown("a")    && !k.isKeyDown("d") &&
         !k.isKeyDown("w")    && !k.isKeyDown("s")) {
       if (phase === "playing") vivi.play("idle-" + lastFace);
+    }
+  });
+});
+
+// ── Cena: MISSÃO 3 – O ENCONTRO ─────────────────────────────────────────
+k.scene("missao3", () => {
+  // ── Estado ───────────────────────────────────────────────────────────────
+  let arrivedAtPillar = false;
+  let inKissScene     = false;
+  let paused          = false;
+  let destroyPause    = null;
+  let dialogActive    = false;
+  let dialogIndex     = 0;
+  let currentFullText = "";
+  let currentCharIdx  = 0;
+  let typingDone      = false;
+  let typingHandle    = null;
+  let arrowVisible    = false;
+  let arrowTimer      = 0;
+
+  // ── Áudio (Web Audio API) ────────────────────────────────────────────────
+  let audioCtx3 = null;
+  function getAudioCtx3() {
+    if (!audioCtx3) audioCtx3 = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx3;
+  }
+  function playTypingSound() {
+    try {
+      const ctx  = getAudioCtx3();
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = 800 + Math.random() * 400;
+      osc.type = "square";
+      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      osc.start();
+      osc.stop(ctx.currentTime + 0.04);
+    } catch (e) {}
+  }
+
+  // ── Fade de entrada ──────────────────────────────────────────────────────
+  const entryFade = k.add([
+    k.rect(SW, SH), k.pos(0, 0),
+    k.color(0, 0, 0), k.opacity(1),
+    k.z(60), k.fixed(),
+  ]);
+  k.tween(1, 0, 1.0, v => { entryFade.opacity = v; }, () => { entryFade.destroy(); });
+
+  // ── Background ───────────────────────────────────────────────────────────
+  k.add([
+    k.sprite("cena3_bg"),
+    k.pos(0, 0),
+    k.scale(SW / 960, SH / 720),
+    k.z(0), k.fixed(),
+  ]);
+
+  // ── Estrelas ─────────────────────────────────────────────────────────────
+  const starPosA = [
+    { x: SW * 0.08, y: SH * 0.04 },
+    { x: SW * 0.18, y: SH * 0.12 },
+    { x: SW * 0.32, y: SH * 0.07 },
+    { x: SW * 0.45, y: SH * 0.18 },
+    { x: SW * 0.58, y: SH * 0.05 },
+    { x: SW * 0.70, y: SH * 0.14 },
+    { x: SW * 0.82, y: SH * 0.08 },
+    { x: SW * 0.92, y: SH * 0.22 },
+  ];
+  starPosA.forEach(({ x, y }, i) => {
+    const s = k.add([
+      k.sprite("sprite_estrela_a"),
+      k.pos(x, y), k.anchor("center"),
+      k.scale(1.0), k.z(1), k.fixed(),
+    ]);
+    k.wait(i * 0.3, () => { s.play("blink"); });
+  });
+
+  const starPosB = [
+    { x: SW * 0.12, y: SH * 0.20 },
+    { x: SW * 0.27, y: SH * 0.24 },
+    { x: SW * 0.50, y: SH * 0.26 },
+    { x: SW * 0.65, y: SH * 0.22 },
+    { x: SW * 0.78, y: SH * 0.27 },
+    { x: SW * 0.88, y: SH * 0.15 },
+  ];
+  starPosB.forEach(({ x, y }, i) => {
+    const s = k.add([
+      k.sprite("sprite_estrela_b"),
+      k.pos(x, y), k.anchor("center"),
+      k.scale(0.8), k.z(1), k.fixed(),
+    ]);
+    k.wait(i * 0.25, () => { s.play("blink"); });
+  });
+
+  const starPosC = [
+    { x: SW * 0.22, y: SH * 0.06 },
+    { x: SW * 0.42, y: SH * 0.12 },
+    { x: SW * 0.62, y: SH * 0.09 },
+    { x: SW * 0.85, y: SH * 0.20 },
+  ];
+  starPosC.forEach(({ x, y }, i) => {
+    const s = k.add([
+      k.sprite("sprite_estrela_c"),
+      k.pos(x, y), k.anchor("center"),
+      k.scale(1.2), k.z(1), k.fixed(),
+    ]);
+    k.wait(i * 0.35, () => { s.play("blink"); });
+  });
+
+  // ── Pilar ─────────────────────────────────────────────────────────────────
+  const pilar = k.add([
+    k.sprite("sprite_pilar"),
+    k.pos(SW * (85 / 960), SH * (60 / 720)),
+    k.anchor("top"),
+    k.scale(SC * 1.2),
+    k.z(3), k.fixed(),
+  ]);
+  pilar.play("light");
+
+  // ── Poste ─────────────────────────────────────────────────────────────────
+  const poste = k.add([
+    k.sprite("sprite_poste"),
+    k.pos(SW * (255 / 960), SH * (65 / 720)),
+    k.anchor("top"),
+    k.scale(SC * 1.1),
+    k.z(3), k.fixed(),
+  ]);
+  poste.play("pulse");
+
+  // ── Personagens ───────────────────────────────────────────────────────────
+  const ENTRY_X       = -48;
+  const ENTRY_Y       = SH * 0.62;
+  const MEET_X        = SW * 0.38;
+  const GIGI_OFFSET_X = 38;
+
+  const vivi = k.add([
+    k.sprite("vivi"),
+    k.pos(ENTRY_X, ENTRY_Y),
+    k.anchor("center"),
+    k.scale(SC * 2.8),
+    k.z(5), k.fixed(),
+  ]);
+  vivi.play("walk-right");
+
+  const gigi = k.add([
+    k.sprite("gigi"),
+    k.pos(ENTRY_X + GIGI_OFFSET_X, ENTRY_Y),
+    k.anchor("center"),
+    k.scale(SC * 2.8),
+    k.z(5), k.fixed(),
+  ]);
+  gigi.play("walk-right");
+
+  // ── Caixa de diálogo ──────────────────────────────────────────────────────
+  const DW          = 460 * SC;
+  const DH          = 100 * SC;
+  const DY          = SH - DH / 2 - 12 * SC;
+  const PORTRAIT_CX = SW / 2 - DW / 2 + 50 * SC;
+  const TEXT_X      = SW / 2 - DW / 2 + 100 * SC;
+
+  const dialogBorder = k.add([
+    k.rect(DW + 4 * SC, DH + 4 * SC, { radius: 12 * SC }),
+    k.pos(SW / 2, DY), k.anchor("center"),
+    k.color(255, 105, 180), k.opacity(0.92),
+    k.z(29), k.fixed(),
+  ]);
+
+  const dialogBg = k.add([
+    k.rect(DW, DH, { radius: 10 * SC }),
+    k.pos(SW / 2, DY), k.anchor("center"),
+    k.color(18, 4, 32), k.opacity(0.92),
+    k.z(30), k.fixed(),
+  ]);
+
+  const portraitBorder = k.add([
+    k.rect(84 * SC, 84 * SC, { radius: 4 * SC }),
+    k.pos(PORTRAIT_CX, DY), k.anchor("center"),
+    k.color(255, 105, 180),
+    k.z(31), k.fixed(),
+  ]);
+
+  const portraitFill = k.add([
+    k.rect(80 * SC, 80 * SC, { radius: 3 * SC }),
+    k.pos(PORTRAIT_CX, DY), k.anchor("center"),
+    k.color(30, 8, 48),
+    k.z(32), k.fixed(),
+  ]);
+
+  const portraitVivi = k.add([
+    k.sprite("vivi", { frame: 0 }),
+    k.pos(PORTRAIT_CX, DY), k.anchor("center"),
+    k.scale(SC * 4),
+    k.z(33), k.fixed(),
+  ]);
+
+  const portraitGigi = k.add([
+    k.sprite("gigi", { frame: 0 }),
+    k.pos(PORTRAIT_CX, DY), k.anchor("center"),
+    k.scale(SC * 4),
+    k.z(33), k.fixed(),
+  ]);
+
+  const dialogName = k.add([
+    k.text("", { size: fs(8), font: "pressstart2p" }),
+    k.pos(TEXT_X, DY - DH / 2 + 14 * SC),
+    k.color(255, 105, 180),
+    k.z(34), k.fixed(),
+  ]);
+
+  const dialogText = k.add([
+    k.text("", { size: fs(7), font: "pressstart2p", width: DW - 110 * SC, align: "left" }),
+    k.pos(TEXT_X, DY - DH / 2 + 30 * SC),
+    k.color(255, 245, 255),
+    k.z(34), k.fixed(),
+  ]);
+
+  const dialogArrow = k.add([
+    k.text("▼", { size: fs(8), font: "pressstart2p" }),
+    k.pos(SW / 2 + DW / 2 - 16 * SC, DY + DH / 2 - 14 * SC),
+    k.color(255, 255, 255), k.opacity(0),
+    k.z(34), k.fixed(),
+  ]);
+
+  function setDialogVisible(v) {
+    dialogBorder.hidden   = !v;
+    dialogBg.hidden       = !v;
+    portraitBorder.hidden = !v;
+    portraitFill.hidden   = !v;
+    portraitVivi.hidden   = !v;
+    portraitGigi.hidden   = !v;
+    dialogName.hidden     = !v;
+    dialogText.hidden     = !v;
+    dialogArrow.hidden    = !v;
+    dialogActive          = v;
+  }
+  setDialogVisible(false);
+
+  // ── Sistema de digitação ──────────────────────────────────────────────────
+  function typeText(fullText) {
+    currentFullText     = fullText;
+    currentCharIdx      = 0;
+    typingDone          = false;
+    arrowVisible        = false;
+    arrowTimer          = 0;
+    dialogArrow.opacity = 0;
+    dialogText.text     = "";
+    function step() {
+      if (currentCharIdx >= fullText.length) {
+        typingDone   = true;
+        arrowVisible = true;
+        return;
+      }
+      dialogText.text = fullText.slice(0, currentCharIdx + 1);
+      playTypingSound();
+      currentCharIdx++;
+      typingHandle = k.wait(0.03, step);
+    }
+    step();
+  }
+
+  // ── Dados do diálogo ──────────────────────────────────────────────────────
+  const dialogs = [
+    { speaker: "vivi", name: "Vivi",     text: "Tudo certo?" },
+    { speaker: "gigi", name: "Giovanna", text: "To muito nervosa kkkk, nao sei se isso vai dar certo." },
+    { speaker: "vivi", name: "Vivi",     text: "Fica tranquila." },
+    { speaker: "vivi", name: "Vivi",     text: "Confia em mim." },
+    { speaker: "vivi", name: "Vivi",     text: "Voce e muito linda, quero muito isso." },
+  ];
+
+  // ── Lógica do diálogo ─────────────────────────────────────────────────────
+  function showDialog(index) {
+    const d = dialogs[index];
+    setDialogVisible(true);
+    dialogName.text     = d.name;
+    portraitVivi.hidden = d.speaker !== "vivi";
+    portraitGigi.hidden = d.speaker !== "gigi";
+    typeText(d.text);
+  }
+
+  function advanceDialog() {
+    if (!dialogActive) return;
+    if (!typingDone) {
+      if (typingHandle) { typingHandle.cancel(); typingHandle = null; }
+      dialogText.text     = currentFullText;
+      typingDone          = true;
+      arrowVisible        = true;
+      return;
+    }
+    arrowVisible        = false;
+    arrowTimer          = 0;
+    dialogArrow.opacity = 0;
+    dialogIndex++;
+    if (dialogIndex >= dialogs.length) {
+      setDialogVisible(false);
+      startKissScene();
+    } else {
+      showDialog(dialogIndex);
+    }
+  }
+
+  // ── Cena do beijo ─────────────────────────────────────────────────────────
+  function startKissScene() {
+    inKissScene = true;
+    vivi.play("walk-left");
+    gigi.play("walk-right");
+    k.wait(0.4, () => {
+      vivi.play("idle-right");
+      gigi.play("idle-left");
+      const flashOverlay = k.add([
+        k.rect(SW, SH), k.pos(0, 0),
+        k.color(255, 255, 255), k.opacity(0),
+        k.z(70), k.fixed(),
+      ]);
+      k.tween(0, 1, 1.2, v => { flashOverlay.opacity = v; });
+      k.wait(1.8, () => {
+        const kissEmoji = k.add([
+          k.text("💋", { size: fs(48) }),
+          k.pos(SW / 2, SH / 2), k.anchor("center"),
+          k.color(255, 255, 255), k.opacity(0),
+          k.z(71), k.fixed(),
+        ]);
+        k.tween(0, 1, 0.4, v => { kissEmoji.opacity = v; });
+        k.wait(2.5, () => {
+          k.tween(1, 0, 1.0, v => {
+            flashOverlay.opacity = v;
+            kissEmoji.opacity    = v;
+          }, () => { k.go("menu"); });
+        });
+      });
+    });
+  }
+
+  // ── Controles ─────────────────────────────────────────────────────────────
+  k.onKeyPress("space",  () => { advanceDialog(); });
+  k.onKeyPress("return", () => { advanceDialog(); });
+  k.onClick(() => { advanceDialog(); });
+
+  k.onKeyPress("escape", () => {
+    if (!arrivedAtPillar || inKissScene) return;
+    if (paused) {
+      if (destroyPause) { destroyPause(); destroyPause = null; }
+      paused = false;
+    } else {
+      paused = true;
+      destroyPause = makePauseOverlay(() => {
+        paused = false; destroyPause = null;
+        document.body.style.cursor = "default";
+      });
+    }
+  });
+
+  // ── Loop principal ────────────────────────────────────────────────────────
+  k.onUpdate(() => {
+    if (paused) return;
+
+    if (arrowVisible) {
+      arrowTimer += k.dt();
+      dialogArrow.opacity = Math.sin(arrowTimer * 6) > 0 ? 1 : 0;
+    }
+
+    if (!arrivedAtPillar) {
+      vivi.pos.x += 110 * k.dt();
+      gigi.pos.x += 110 * k.dt();
+      if (vivi.pos.x >= MEET_X) {
+        arrivedAtPillar = true;
+        vivi.pos.x = MEET_X;
+        gigi.pos.x = MEET_X + GIGI_OFFSET_X;
+        vivi.play("idle-right");
+        gigi.play("idle-left");
+        k.wait(0.5, () => {
+          dialogIndex = 0;
+          showDialog(dialogIndex);
+        });
+      }
     }
   });
 });

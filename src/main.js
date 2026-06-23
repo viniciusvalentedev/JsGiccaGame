@@ -84,6 +84,9 @@ k.loadSprite("sprite_pilar",     "sprites/sprite_pilar.png",     { sliceX: 4, sl
 k.loadSprite("sprite_estrela_a", "sprites/sprite_estrela_a.png", { sliceX: 6, sliceY: 1, anims: { "blink": { from: 0, to: 5, loop: true, speed: 4 } } });
 k.loadSprite("sprite_estrela_b", "sprites/sprite_estrela_b.png", { sliceX: 6, sliceY: 1, anims: { "blink": { from: 0, to: 5, loop: true, speed: 3 } } });
 k.loadSprite("sprite_estrela_c", "sprites/sprite_estrela_c.png", { sliceX: 8, sliceY: 1, anims: { "blink": { from: 0, to: 7, loop: true, speed: 5 } } });
+k.loadSprite("recompensa_flores",        "sprites/recompensa_flores.png");
+k.loadSprite("recompensa_beijos",        "sprites/recompensa_beijos.png");
+k.loadSprite("recompensa_interrogacao",  "sprites/recompensa_interrogacao.png");
 
 // "keyboard" em desktops, "joystick" em dispositivos touch — detectado automaticamente
 let controlMode = window.matchMedia("(pointer: coarse)").matches ? "joystick" : "keyboard";
@@ -97,6 +100,19 @@ const messages = [
   { text: "Obrigado por existir, Giovanna",        time: 39 },
   { text: "Agora bora jogar!",                     time: 50 },
 ];
+
+const recompensasData = [
+  { id: "flores",  sprite: "recompensa_flores",       titulo: "Buquê Perfeito",  fase: "Fase 1 — A Surpresa", descricao: "Gigi coletou 10 flores lindas\ne fez o buquê mais fofo do mundo!", desbloqueada: false },
+  { id: "beijos",  sprite: "recompensa_beijos",       titulo: "15 Beijos!",      fase: "Fase 4 — A Sintonia", descricao: "Você capturou 15 beijos certeiros!\nQue sintonia perfeita <3",          desbloqueada: false },
+  { id: "secret1", sprite: "recompensa_interrogacao", titulo: "???",             fase: "???",                  descricao: "Ainda nao foi descoberta...\nContinue jogando! ✨",                     desbloqueada: false },
+  { id: "secret2", sprite: "recompensa_interrogacao", titulo: "???",             fase: "???",                  descricao: "Segredo guardado a 7 chaves.\nVoce vai encontrar! 💕",                  desbloqueada: false },
+  { id: "secret3", sprite: "recompensa_interrogacao", titulo: "???",             fase: "???",                  descricao: "Esse segredo e especial...\nNao desista! 🌟",                           desbloqueada: false },
+];
+
+let volumeGeral   = 1.0;
+let volumeEfeitos = 1.0;
+let volumeMusica  = 1.0;
+function getEffectsVolume() { return volumeGeral * volumeEfeitos; }
 
 // ── Joystick Virtual ─────────────────────────────────────────────────────
 // getBlocked: () => bool — retorna true quando o input deve ser ignorado
@@ -259,6 +275,276 @@ function makePauseOverlay(onResume) {
   exitBtn.onClick(() => { k.go("menu"); });
 
   return () => objs.forEach(o => o.destroy());
+}
+
+// ── Cenário noturno (compartilhado por missao3 e missao4) ────────────────
+// Background cena3_bg + estrelas + pilar + poste, todos fixos.
+// O background é deslocado SH*0.07 para baixo para revelar mais céu no topo.
+function addNightScenery() {
+  const bgScale = Math.max(SW / 960, SH / 720);
+  const bgX     = SW / 2 - (960 * bgScale) / 2;
+  const bgY     = (SH / 2 + SH * 0.15) - (720 * bgScale) / 2;
+
+  k.add([
+    k.sprite("cena3_bg"),
+    k.pos(SW / 2, SH / 2 + SH * 0.15),
+    k.anchor("center"),
+    k.scale(bgScale),
+    k.z(0), k.fixed(),
+  ]);
+
+  // Converte um ponto (px,py) da imagem original (960x720) para a tela
+  const bgPos = (px, py) => ({ x: bgX + px * bgScale, y: bgY + py * bgScale });
+
+  // ── Estrelas (na faixa de céu, rows < ~200 da imagem) ──────────────────
+  const starPosA = [
+    bgPos( 77,  29), bgPos(173,  86), bgPos(307,  50), bgPos(432, 130),
+    bgPos(557,  36), bgPos(672, 101), bgPos(787,  58), bgPos(883, 158),
+  ];
+  starPosA.forEach(({ x, y }, i) => {
+    const s = k.add([
+      k.sprite("sprite_estrela_a"),
+      k.pos(x, y), k.anchor("center"),
+      k.scale(1.0), k.z(1), k.fixed(),
+    ]);
+    k.wait(i * 0.3, () => { s.play("blink"); });
+  });
+
+  const starPosB = [
+    bgPos(115, 144), bgPos(259, 173), bgPos(480, 187),
+    bgPos(624, 158), bgPos(749, 194), bgPos(845, 108),
+  ];
+  starPosB.forEach(({ x, y }, i) => {
+    const s = k.add([
+      k.sprite("sprite_estrela_b"),
+      k.pos(x, y), k.anchor("center"),
+      k.scale(0.8), k.z(1), k.fixed(),
+    ]);
+    k.wait(i * 0.25, () => { s.play("blink"); });
+  });
+
+  const starPosC = [
+    bgPos(211, 43), bgPos(403, 86), bgPos(595, 65), bgPos(816, 144),
+  ];
+  starPosC.forEach(({ x, y }, i) => {
+    const s = k.add([
+      k.sprite("sprite_estrela_c"),
+      k.pos(x, y), k.anchor("center"),
+      k.scale(1.2), k.z(1), k.fixed(),
+    ]);
+    k.wait(i * 0.35, () => { s.play("blink"); });
+  });
+
+  // ── Pilar (esquerda do cenário) ────────────────────────────────────────
+  const pilar = k.add([
+    k.sprite("sprite_pilar"),
+    k.pos(bgX + 170 * bgScale, bgY + 265 * bgScale),
+    k.anchor("top"),
+    k.scale(bgScale * 0.88),
+    k.z(6), k.fixed(),
+  ]);
+  pilar.play("light");
+
+  // ── Poste (direita do cenário) ─────────────────────────────────────────
+  const poste = k.add([
+    k.sprite("sprite_poste"),
+    k.pos(bgX + 600 * bgScale, bgY + 160 * bgScale),
+    k.anchor("top"),
+    k.scale(bgScale * 0.88),
+    k.z(3), k.fixed(),
+  ]);
+  poste.play("pulse");
+
+  return { bgScale, bgX, bgY, bgPos };
+}
+
+// ── Funções globais de UI ────────────────────────────────────────────────
+function abrirRecompensas() {
+  const recompObjs = [];
+  const add = (o) => { recompObjs.push(o); return o; };
+
+  const bg = add(k.add([k.rect(SW, SH), k.pos(0,0), k.color(0,0,0), k.opacity(0.75), k.z(80), k.fixed()]));
+
+  const PW = SW * 0.88, PH = SH * 0.82;
+  add(k.add([k.rect(PW + 8*SC, PH + 8*SC, { radius: 18 }), k.pos(SW/2, SH/2), k.anchor("center"), k.color(240,110,160), k.z(81), k.fixed()]));
+  add(k.add([k.rect(PW, PH, { radius: 15 }), k.pos(SW/2, SH/2), k.anchor("center"), k.color(255,215,232), k.opacity(0.97), k.z(82), k.fixed()]));
+
+  add(k.add([
+    k.text("Recompensas", { size: fs(14), font: "pressstart2p", align: "center" }),
+    k.pos(SW/2, SH/2 - PH/2 + 22*SC), k.anchor("center"),
+    k.color(170,28,88), k.z(83), k.fixed(),
+  ]));
+
+  function fechar() { recompObjs.forEach(o => { if (o.exists()) o.destroy(); }); }
+
+  // Botão X
+  const xBtn = add(k.add([
+    k.rect(28*SC, 28*SC, { radius: 6*SC }),
+    k.pos(SW/2 + PW/2 - 6*SC, SH/2 - PH/2 + 6*SC), k.anchor("topright"),
+    k.color(200,60,80), k.area(), k.z(83), k.fixed(),
+  ]));
+  add(k.add([k.text("X", { size: fs(9), font: "pressstart2p" }), k.pos(SW/2 + PW/2 - 6*SC - 14*SC, SH/2 - PH/2 + 6*SC + 14*SC), k.anchor("center"), k.color(255,255,255), k.z(84), k.fixed()]));
+  xBtn.onHover(() => { xBtn.color = k.rgb(230,80,100); document.body.style.cursor = "pointer"; });
+  xBtn.onHoverEnd(() => { xBtn.color = k.rgb(200,60,80); document.body.style.cursor = "default"; });
+  xBtn.onClick(() => { document.body.style.cursor = "default"; fechar(); });
+
+  // Grade de ícones (5 recompensas lado a lado)
+  const iconSize = 56 * SC;
+  const iconSpacing = (PW - 5 * iconSize) / 6;
+  const iconY = SH/2 - 10*SC;
+  recompensasData.forEach((r, i) => {
+    const ix = SW/2 - PW/2 + iconSpacing + iconSize/2 + i * (iconSize + iconSpacing);
+    const iconBg = add(k.add([
+      k.rect(iconSize, iconSize, { radius: 10*SC }),
+      k.pos(ix, iconY), k.anchor("center"),
+      k.color(...(r.desbloqueada ? [200,160,220] : [80,60,100])),
+      k.area(), k.z(83), k.fixed(),
+    ]));
+    const sprScale = (48 * SC) / 64;
+    add(k.add([k.sprite(r.sprite), k.pos(ix, iconY), k.anchor("center"), k.scale(sprScale), k.z(84), k.fixed()]));
+    add(k.add([
+      k.text(r.desbloqueada ? r.titulo : "???", { size: fs(6), font: "pressstart2p", align: "center", width: iconSize + 8*SC }),
+      k.pos(ix, iconY + iconSize/2 + 8*SC), k.anchor("center"),
+      k.color(80,30,60), k.z(83), k.fixed(),
+    ]));
+    iconBg.onHover(() => { iconBg.color = k.rgb(...(r.desbloqueada ? [220,180,240] : [100,80,120])); document.body.style.cursor = "pointer"; });
+    iconBg.onHoverEnd(() => { iconBg.color = k.rgb(...(r.desbloqueada ? [200,160,220] : [80,60,100])); document.body.style.cursor = "default"; });
+    iconBg.onClick(() => { document.body.style.cursor = "default"; abrirDetalheRecompensa(r, recompObjs); });
+  });
+
+  add(k.add([
+    k.text("Clique em uma recompensa para ver detalhes", { size: fs(6), font: "pressstart2p", align: "center", width: PW - 20*SC }),
+    k.pos(SW/2, SH/2 + PH/2 - 18*SC), k.anchor("center"),
+    k.color(180,100,140), k.z(83), k.fixed(),
+  ]));
+}
+
+function abrirDetalheRecompensa(r, parentObjs) {
+  const detObjs = [];
+  const add = (o) => { detObjs.push(o); return o; };
+
+  const DW = SW * 0.70, DH = SH * 0.55;
+  add(k.add([k.rect(DW + 8*SC, DH + 8*SC, { radius: 18 }), k.pos(SW/2, SH/2), k.anchor("center"), k.color(240,110,160), k.z(90), k.fixed()]));
+  add(k.add([k.rect(DW, DH, { radius: 15 }), k.pos(SW/2, SH/2), k.anchor("center"), k.color(255,215,232), k.opacity(0.97), k.z(91), k.fixed()]));
+
+  function fecharDet() { detObjs.forEach(o => { if (o.exists()) o.destroy(); }); }
+
+  const sprScale = (80 * SC) / 64;
+  add(k.add([k.sprite(r.sprite), k.pos(SW/2, SH/2 - DH/2 + 52*SC), k.anchor("center"), k.scale(sprScale), k.z(92), k.fixed()]));
+  add(k.add([k.text(r.titulo, { size: fs(12), font: "pressstart2p", align: "center", width: DW - 20*SC }), k.pos(SW/2, SH/2 - DH/2 + 110*SC), k.anchor("center"), k.color(170,28,88), k.z(92), k.fixed()]));
+  add(k.add([k.text(r.fase, { size: fs(7), font: "pressstart2p", align: "center", width: DW - 20*SC }), k.pos(SW/2, SH/2 - DH/2 + 140*SC), k.anchor("center"), k.color(120,60,100), k.z(92), k.fixed()]));
+  add(k.add([k.text(r.descricao, { size: fs(7), font: "pressstart2p", align: "center", width: DW - 30*SC }), k.pos(SW/2, SH/2 - DH/2 + 180*SC), k.anchor("center"), k.color(60,30,50), k.z(92), k.fixed()]));
+  if (r.desbloqueada) {
+    add(k.add([k.text("✓ Desbloqueada!", { size: fs(7), font: "pressstart2p", align: "center" }), k.pos(SW/2, SH/2 + DH/2 - 64*SC), k.anchor("center"), k.color(50,160,70), k.z(92), k.fixed()]));
+  }
+
+  const fechBtn = add(k.add([k.rect(160*SC, 36*SC, { radius: 8*SC }), k.pos(SW/2, SH/2 + DH/2 - 24*SC), k.anchor("center"), k.color(250,115,162), k.area(), k.z(92), k.fixed()]));
+  add(k.add([k.text("Fechar", { size: fs(9), font: "pressstart2p", align: "center" }), k.pos(SW/2, SH/2 + DH/2 - 24*SC), k.anchor("center"), k.color(255,255,255), k.z(93), k.fixed()]));
+  fechBtn.onHover(() => { fechBtn.color = k.rgb(255,75,130); document.body.style.cursor = "pointer"; });
+  fechBtn.onHoverEnd(() => { fechBtn.color = k.rgb(250,115,162); document.body.style.cursor = "default"; });
+  fechBtn.onClick(() => { document.body.style.cursor = "default"; fecharDet(); });
+}
+
+function abrirCreditos() {
+  const credObjs = [];
+  const add = (o) => { credObjs.push(o); return o; };
+
+  add(k.add([k.rect(SW, SH), k.pos(0,0), k.color(0,0,0), k.opacity(0.65), k.z(89), k.fixed()]));
+
+  const CW = SW * 0.72, CH = SH * 0.80;
+  const panelTop    = SH / 2 - CH / 2;
+  const panelBottom = SH / 2 + CH / 2;
+
+  add(k.add([k.rect(CW + 8*SC, CH + 8*SC, { radius: 18 }), k.pos(SW/2, SH/2), k.anchor("center"), k.color(240,110,160), k.z(90), k.fixed()]));
+  add(k.add([k.rect(CW, CH, { radius: 15 }), k.pos(SW/2, SH/2), k.anchor("center"), k.color(255,215,232), k.opacity(0.97), k.z(91), k.fixed()]));
+
+  function fechar() { credObjs.forEach(o => { if (o.exists()) o.destroy(); }); }
+
+  // ── Cabeçalho fixo (não rola) ──────────────────────────────────────────
+  const HEADER_H = 46 * SC;
+  add(k.add([k.text("Créditos", { size: fs(14), font: "pressstart2p", align: "center" }), k.pos(SW/2, panelTop + 20*SC), k.anchor("center"), k.color(170,28,88), k.z(92), k.fixed()]));
+  add(k.add([k.rect(CW * 0.85, 2*SC), k.pos(SW/2, panelTop + HEADER_H - 2*SC), k.anchor("center"), k.color(240,110,160), k.z(92), k.fixed()]));
+
+  // ── Botão Fechar fixo (não rola) ──────────────────────────────────────
+  const FOOTER_H   = 52 * SC;
+  const fechBtnY   = panelBottom - FOOTER_H / 2;
+  const fechBtn    = add(k.add([k.rect(160*SC, 36*SC, { radius: 8*SC }), k.pos(SW/2, fechBtnY), k.anchor("center"), k.color(250,115,162), k.area(), k.z(95), k.fixed()]));
+  add(k.add([k.text("Fechar", { size: fs(9), font: "pressstart2p", align: "center" }), k.pos(SW/2, fechBtnY), k.anchor("center"), k.color(255,255,255), k.z(96), k.fixed()]));
+  fechBtn.onHover(() => { fechBtn.color = k.rgb(255,75,130); document.body.style.cursor = "pointer"; });
+  fechBtn.onHoverEnd(() => { fechBtn.color = k.rgb(250,115,162); document.body.style.cursor = "default"; });
+  fechBtn.onClick(() => { document.body.style.cursor = "default"; fechar(); });
+
+  // ── Área de conteúdo rolável ──────────────────────────────────────────
+  const clipTop    = panelTop + HEADER_H;
+  const clipBottom = panelBottom - FOOTER_H;
+  const visibleH   = clipBottom - clipTop;
+
+  // Conteúdo: array de { obj, relY } onde relY é relativo ao início do conteúdo
+  const scrollItems = [];
+  const SCROLL_STEP = 30 * SC;
+  let scrollY = 0;
+
+  let relY = 0;  // cursor vertical relativo
+  function addContent(obj, height) {
+    scrollItems.push({ obj, relY });
+    relY += height;
+  }
+
+  // Cria cada bloco de conteúdo (posição Y será calculada pelo applyScroll)
+  const txt1 = add(k.add([k.text("Feito com muito amor por\nVinicius\npara sua linda\nGiovanna 💕", { size: fs(7), font: "pressstart2p", align: "center", width: CW - 28*SC }), k.pos(SW/2, 0), k.anchor("center"), k.color(80,30,60), k.z(92), k.fixed()]));
+  addContent(txt1, 68*SC);
+
+  const sep1 = add(k.add([k.rect(CW * 0.85, 2*SC), k.pos(SW/2, 0), k.anchor("center"), k.color(240,110,160), k.z(92), k.fixed()]));
+  addContent(sep1, 16*SC);
+
+  const sub1 = add(k.add([k.text("Desenvolvido com", { size: fs(7), font: "pressstart2p", align: "center" }), k.pos(SW/2, 0), k.anchor("center"), k.color(120,60,100), k.z(92), k.fixed()]));
+  addContent(sub1, 22*SC);
+
+  const tech = add(k.add([k.text("KAPLAY — Game Engine\nVite — Build Tool\nJavaScript — Linguagem\nWeb Audio API — Sons\nPython + Pillow — Sprites\nGoogle Fonts — Press Start 2P", { size: fs(6), font: "pressstart2p", align: "center", width: CW - 28*SC }), k.pos(SW/2, 0), k.anchor("center"), k.color(100,50,80), k.z(92), k.fixed()]));
+  addContent(tech, 86*SC);
+
+  const sep2 = add(k.add([k.rect(CW * 0.85, 2*SC), k.pos(SW/2, 0), k.anchor("center"), k.color(240,110,160), k.z(92), k.fixed()]));
+  addContent(sep2, 16*SC);
+
+  const sub2 = add(k.add([k.text("Assistência de IA", { size: fs(7), font: "pressstart2p", align: "center" }), k.pos(SW/2, 0), k.anchor("center"), k.color(120,60,100), k.z(92), k.fixed()]));
+  addContent(sub2, 22*SC);
+
+  const iaText = add(k.add([k.text("Claude (Anthropic)\nRoteiro, código e sprites\ngerados com ajuda de IA", { size: fs(6), font: "pressstart2p", align: "center", width: CW - 28*SC }), k.pos(SW/2, 0), k.anchor("center"), k.color(100,50,80), k.z(92), k.fixed()]));
+  addContent(iaText, 50*SC);
+
+  const sep3 = add(k.add([k.rect(CW * 0.85, 2*SC), k.pos(SW/2, 0), k.anchor("center"), k.color(240,110,160), k.z(92), k.fixed()]));
+  addContent(sep3, 16*SC);
+
+  const footer = add(k.add([k.text("Momoris Gigica © 2025\n4 anos de amor 💕", { size: fs(6), font: "pressstart2p", align: "center", width: CW - 28*SC }), k.pos(SW/2, 0), k.anchor("center"), k.color(160,100,140), k.z(92), k.fixed()]));
+  addContent(footer, 32*SC);
+
+  const totalContentH = relY;
+  const maxScroll     = Math.max(0, totalContentH - visibleH + 16*SC);
+
+  function applyScroll() {
+    for (const item of scrollItems) {
+      const absY = clipTop + item.relY - scrollY + 16*SC;
+      item.obj.pos.y = absY;
+      item.obj.hidden = absY < clipTop + 4*SC || absY > clipBottom - 4*SC;
+    }
+  }
+  applyScroll();
+
+  // ── Botões de rolagem ▲▼ (fixos, lado direito do painel) ──────────────
+  const scrollBtnX = SW / 2 + CW / 2 - 18 * SC;
+  const scrollBtnS = 24 * SC;
+
+  const upBtn = add(k.add([k.rect(scrollBtnS, scrollBtnS, { radius: 5*SC }), k.pos(scrollBtnX, clipTop + 20*SC), k.anchor("center"), k.color(200,80,120), k.area(), k.z(94), k.fixed()]));
+  add(k.add([k.text("▲", { size: fs(8), font: "pressstart2p" }), k.pos(scrollBtnX, clipTop + 20*SC), k.anchor("center"), k.color(255,255,255), k.z(95), k.fixed()]));
+  upBtn.onHover(() => { upBtn.color = k.rgb(230,100,140); document.body.style.cursor = "pointer"; });
+  upBtn.onHoverEnd(() => { upBtn.color = k.rgb(200,80,120); document.body.style.cursor = "default"; });
+  upBtn.onClick(() => { scrollY = Math.max(0, scrollY - SCROLL_STEP); applyScroll(); });
+
+  const dnBtn = add(k.add([k.rect(scrollBtnS, scrollBtnS, { radius: 5*SC }), k.pos(scrollBtnX, clipBottom - 20*SC), k.anchor("center"), k.color(200,80,120), k.area(), k.z(94), k.fixed()]));
+  add(k.add([k.text("▼", { size: fs(8), font: "pressstart2p" }), k.pos(scrollBtnX, clipBottom - 20*SC), k.anchor("center"), k.color(255,255,255), k.z(95), k.fixed()]));
+  dnBtn.onHover(() => { dnBtn.color = k.rgb(230,100,140); document.body.style.cursor = "pointer"; });
+  dnBtn.onHoverEnd(() => { dnBtn.color = k.rgb(200,80,120); document.body.style.cursor = "default"; });
+  dnBtn.onClick(() => { scrollY = Math.min(maxScroll, scrollY + SCROLL_STEP); applyScroll(); });
 }
 
 // ── Cena: MENU ───────────────────────────────────────────────────────────
@@ -431,6 +717,32 @@ k.scene("menu", () => {
     controlMode = controlMode === "keyboard" ? "joystick" : "keyboard";
     ctrlLabel.text = controlMode === "joystick" ? "Controles: Joystick" : "Controles: Teclado";
   });
+
+  // Botão troféu (canto superior direito)
+  const trofeuBtn = k.add([
+    k.rect(36 * SC, 36 * SC, { radius: 8 * SC }),
+    k.pos(SW - 18 * SC, 18 * SC), k.anchor("topright"),
+    k.color(180, 130, 40), k.area(), k.z(8), k.fixed(),
+  ]);
+  k.add([
+    k.text("🏆", { size: fs(14) }),
+    k.pos(SW - 18 * SC - 18 * SC, 18 * SC + 18 * SC), k.anchor("center"),
+    k.z(9), k.fixed(),
+  ]);
+  trofeuBtn.onHover(() => { trofeuBtn.color = k.rgb(210,160,60); document.body.style.cursor = "pointer"; });
+  trofeuBtn.onHoverEnd(() => { trofeuBtn.color = k.rgb(180,130,40); document.body.style.cursor = "default"; });
+  trofeuBtn.onClick(() => { abrirRecompensas(); });
+
+  // Botão configurações (canto superior esquerdo)
+  const configBtn = k.add([
+    k.rect(36*SC, 36*SC, { radius: 8*SC }),
+    k.pos(18*SC, 18*SC), k.anchor("topleft"),
+    k.color(80,80,100), k.area(), k.z(8), k.fixed(),
+  ]);
+  k.add([k.text("⚙", { size: fs(14) }), k.pos(18*SC + 18*SC, 18*SC + 18*SC), k.anchor("center"), k.z(9), k.fixed()]);
+  configBtn.onHover(() => { configBtn.color = k.rgb(110,110,130); document.body.style.cursor = "pointer"; });
+  configBtn.onHoverEnd(() => { configBtn.color = k.rgb(80,80,100); document.body.style.cursor = "default"; });
+  configBtn.onClick(() => { document.body.style.cursor = "default"; k.go("configuracoes"); });
 });
 
 // ── Cena: ABERTURA (jogo principal) ──────────────────────────────────────
@@ -796,7 +1108,7 @@ k.scene("missao1", () => {
       gain.connect(ctx.destination);
       osc.frequency.value = 800 + Math.random() * 400;
       osc.type = "square";
-      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.setValueAtTime(0.05 * getEffectsVolume(), ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
       osc.start();
       osc.stop(ctx.currentTime + 0.04);
@@ -813,7 +1125,7 @@ k.scene("missao1", () => {
       osc.frequency.setValueAtTime(440, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.2);
       osc.type = "sine";
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3 * getEffectsVolume(), ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
       osc.start();
       osc.stop(ctx.currentTime + 0.2);
@@ -1144,7 +1456,7 @@ k.scene("celebracao1", () => {
       osc.frequency.value = freq;
       osc.type = "sine";
       const t = ctx.currentTime + i * 0.17;
-      gain.gain.setValueAtTime(0.3, t);
+      gain.gain.setValueAtTime(0.3 * getEffectsVolume(), t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
       osc.start(t);
       osc.stop(t + 0.15);
@@ -1227,6 +1539,7 @@ k.scene("celebracao1", () => {
     k.z(11),
     k.fixed(),
   ]);
+  recompensasData.find(r => r.id === "flores").desbloqueada = true;
   k.wait(2.5, () => {
     k.tween(0, 1, 0.4, v => { nextBtn.opacity = v; nextLabel.opacity = v; });
     nextBtn.onHover(() => {
@@ -1287,7 +1600,7 @@ k.scene("selecionar_fase", () => {
 
   // Borda do painel
   k.add([
-    k.rect(280 * SC, 290 * SC, { radius: 18 * SC }),
+    k.rect(280 * SC, 368 * SC, { radius: 18 * SC }),
     k.pos(SW / 2, SH / 2),
     k.anchor("center"),
     k.color(240, 110, 160),
@@ -1297,7 +1610,7 @@ k.scene("selecionar_fase", () => {
 
   // Painel rosado
   k.add([
-    k.rect(272 * SC, 282 * SC, { radius: 15 * SC }),
+    k.rect(272 * SC, 360 * SC, { radius: 15 * SC }),
     k.pos(SW / 2, SH / 2),
     k.anchor("center"),
     k.color(255, 215, 232),
@@ -1308,74 +1621,120 @@ k.scene("selecionar_fase", () => {
   // Título
   k.add([
     k.text("Selecionar\nFase", { size: fs(16), font: "pressstart2p", align: "center", width: 252 * SC }),
-    k.pos(SW / 2, SH / 2 - 100 * SC),
+    k.pos(SW / 2, SH / 2 - 122 * SC),
     k.anchor("center"),
     k.color(170, 28, 88),
     k.z(6),
   ]);
 
-  // Botão Fase 1
-  const fase1Btn = k.add([
-    k.rect(230 * SC, 44 * SC, { radius: 10 * SC }),
-    k.pos(SW / 2, SH / 2 - 28 * SC),
-    k.anchor("center"),
-    k.color(250, 115, 162),
-    k.area(),
-    k.z(6),
-  ]);
-  k.add([
-    k.text("Fase 1: A Surpresa", { size: fs(8), font: "pressstart2p", align: "center", width: 215 * SC }),
-    k.pos(SW / 2, SH / 2 - 28 * SC),
-    k.anchor("center"),
-    k.color(255, 255, 255),
-    k.z(7),
-  ]);
-  fase1Btn.onHover(() => {
-    fase1Btn.color = k.rgb(255, 75, 130);
-    document.body.style.cursor = "pointer";
-  });
-  fase1Btn.onHoverEnd(() => {
-    fase1Btn.color = k.rgb(250, 115, 162);
-    document.body.style.cursor = "default";
-  });
-  fase1Btn.onClick(() => {
-    document.body.style.cursor = "default";
-    k.go("missao1");
-  });
+  // Paginação de fases
+  const fasesData = [
+    { label: "Fase 1: A Surpresa", scene: "missao1", color: [250, 115, 162] },
+    { label: "Fase 2: O Campinho", scene: "missao2", color: [100, 160, 255] },
+    { label: "Fase 3: O Beijo",    scene: "missao3", color: [140,  80, 180] },
+    { label: "Fase 4: A Sintonia", scene: "missao4", color: [180,  60,  80] },
+  ];
+  const FASES_POR_PAGINA = 3;
+  let paginaAtual = 0;
 
-  // Botão Fase 2
-  const fase2Btn = k.add([
-    k.rect(230 * SC, 44 * SC, { radius: 10 * SC }),
-    k.pos(SW / 2, SH / 2 + 28 * SC),
-    k.anchor("center"),
-    k.color(100, 160, 255),
-    k.area(),
-    k.z(6),
-  ]);
-  k.add([
-    k.text("Fase 2: O Campinho", { size: fs(8), font: "pressstart2p", align: "center", width: 215 * SC }),
-    k.pos(SW / 2, SH / 2 + 28 * SC),
-    k.anchor("center"),
-    k.color(255, 255, 255),
-    k.z(7),
-  ]);
-  fase2Btn.onHover(() => {
-    fase2Btn.color = k.rgb(130, 190, 255);
-    document.body.style.cursor = "pointer";
-  });
-  fase2Btn.onHoverEnd(() => {
-    fase2Btn.color = k.rgb(100, 160, 255);
-    document.body.style.cursor = "default";
-  });
-  fase2Btn.onClick(() => {
-    document.body.style.cursor = "default";
-    k.go("missao2");
-  });
+  function renderFases() {
+    k.get("fase-btn").forEach(o => o.destroy());
 
-  // Botão Voltar
+    const inicio = paginaAtual * FASES_POR_PAGINA;
+    const slice = fasesData.slice(inicio, inicio + FASES_POR_PAGINA);
+
+    slice.forEach((fase, i) => {
+      const base = fase.color;
+      const hover = [Math.min(255, base[0] + 25), Math.min(255, base[1] + 25), Math.min(255, base[2] + 25)];
+      const y = SH / 2 - 60 * SC + i * 52 * SC;
+      const btn = k.add([
+        k.rect(230 * SC, 40 * SC, { radius: 10 * SC }),
+        k.pos(SW / 2, y),
+        k.anchor("center"),
+        k.color(base[0], base[1], base[2]),
+        k.area(),
+        k.z(6),
+        "fase-btn",
+      ]);
+      k.add([
+        k.text(fase.label, { size: fs(8), font: "pressstart2p", align: "center", width: 215 * SC }),
+        k.pos(SW / 2, y),
+        k.anchor("center"),
+        k.color(255, 255, 255),
+        k.z(7),
+        "fase-btn",
+      ]);
+      btn.onHover(() => { btn.color = k.rgb(hover[0], hover[1], hover[2]); document.body.style.cursor = "pointer"; });
+      btn.onHoverEnd(() => { btn.color = k.rgb(base[0], base[1], base[2]); document.body.style.cursor = "default"; });
+      btn.onClick(() => { document.body.style.cursor = "default"; k.go(fase.scene); });
+    });
+
+    // Área de navegação: 48*SC abaixo do slot 3 (SH/2 + 44*SC)
+    const NAV_Y = SH / 2 + 92 * SC;
+
+    // Seta "< Ant"
+    if (paginaAtual > 0) {
+      const antBtn = k.add([
+        k.rect(80 * SC, 30 * SC, { radius: 6 * SC }),
+        k.pos(SW / 2 - 72 * SC, NAV_Y),
+        k.anchor("center"),
+        k.color(80, 80, 110),
+        k.area(),
+        k.z(6),
+        "fase-btn",
+      ]);
+      k.add([
+        k.text("< Ant", { size: fs(7), font: "pressstart2p", align: "center" }),
+        k.pos(SW / 2 - 72 * SC, NAV_Y),
+        k.anchor("center"),
+        k.color(255, 255, 255),
+        k.z(7),
+        "fase-btn",
+      ]);
+      antBtn.onHover(() => { antBtn.color = k.rgb(110, 110, 140); document.body.style.cursor = "pointer"; });
+      antBtn.onHoverEnd(() => { antBtn.color = k.rgb(80, 80, 110); document.body.style.cursor = "default"; });
+      antBtn.onClick(() => { document.body.style.cursor = "default"; paginaAtual--; renderFases(); });
+    }
+
+    // Seta "Prox >"
+    if ((paginaAtual + 1) * FASES_POR_PAGINA < fasesData.length) {
+      const proxBtn = k.add([
+        k.rect(80 * SC, 30 * SC, { radius: 6 * SC }),
+        k.pos(SW / 2 + 72 * SC, NAV_Y),
+        k.anchor("center"),
+        k.color(80, 80, 110),
+        k.area(),
+        k.z(6),
+        "fase-btn",
+      ]);
+      k.add([
+        k.text("Prox >", { size: fs(7), font: "pressstart2p", align: "center" }),
+        k.pos(SW / 2 + 72 * SC, NAV_Y),
+        k.anchor("center"),
+        k.color(255, 255, 255),
+        k.z(7),
+        "fase-btn",
+      ]);
+      proxBtn.onHover(() => { proxBtn.color = k.rgb(110, 110, 140); document.body.style.cursor = "pointer"; });
+      proxBtn.onHoverEnd(() => { proxBtn.color = k.rgb(80, 80, 110); document.body.style.cursor = "default"; });
+      proxBtn.onClick(() => { document.body.style.cursor = "default"; paginaAtual++; renderFases(); });
+    }
+
+    // Indicador de página — centralizado entre as setas
+    k.add([
+      k.text(`${paginaAtual + 1} / ${Math.ceil(fasesData.length / FASES_POR_PAGINA)}`, { size: fs(7), font: "pressstart2p", align: "center" }),
+      k.pos(SW / 2, NAV_Y),
+      k.anchor("center"),
+      k.color(180, 150, 210),
+      k.z(8),
+      "fase-btn",
+    ]);
+  }
+
+  // Botão Voltar (sempre visível) — 42*SC abaixo da área de navegação
   const voltarBtn = k.add([
-    k.rect(230 * SC, 36 * SC, { radius: 10 * SC }),
-    k.pos(SW / 2, SH / 2 + 100 * SC),
+    k.rect(230 * SC, 34 * SC, { radius: 10 * SC }),
+    k.pos(SW / 2, SH / 2 + 136 * SC),
     k.anchor("center"),
     k.color(130, 130, 145),
     k.area(),
@@ -1383,7 +1742,7 @@ k.scene("selecionar_fase", () => {
   ]);
   k.add([
     k.text("< Voltar", { size: fs(9), font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2, SH / 2 + 100 * SC),
+    k.pos(SW / 2, SH / 2 + 136 * SC),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(7),
@@ -1400,6 +1759,8 @@ k.scene("selecionar_fase", () => {
     document.body.style.cursor = "default";
     k.go("menu");
   });
+
+  renderFases();
 });
 
 // ── Cena: MISSÃO 2 – O CAMPINHO ─────────────────────────────────────────
@@ -1672,7 +2033,7 @@ k.scene("missao2", () => {
         osc.connect(gain); gain.connect(ctx.destination);
         osc.type = "sine"; osc.frequency.value = freq;
         const t = ctx.currentTime + i * 0.12;
-        gain.gain.setValueAtTime(0.22, t);
+        gain.gain.setValueAtTime(0.22 * getEffectsVolume(), t);
         gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
         osc.start(t); osc.stop(t + 0.22);
       });
@@ -1685,7 +2046,7 @@ k.scene("missao2", () => {
       osc.type = "sine";
       osc.frequency.setValueAtTime(220, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.5);
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
+      gain.gain.setValueAtTime(0.3 * getEffectsVolume(), ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
       osc.start(); osc.stop(ctx.currentTime + 0.5);
     } catch (e) {}
@@ -1697,7 +2058,7 @@ k.scene("missao2", () => {
       osc.type = "sine";
       osc.frequency.setValueAtTime(1200, ctx.currentTime);
       osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.3);
-      gain.gain.setValueAtTime(0.28, ctx.currentTime);
+      gain.gain.setValueAtTime(0.28 * getEffectsVolume(), ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
       osc.start(); osc.stop(ctx.currentTime + 0.3);
     } catch (e) {}
@@ -2108,7 +2469,7 @@ k.scene("missao3", () => {
       gain.connect(ctx.destination);
       osc.frequency.value = 800 + Math.random() * 400;
       osc.type = "square";
-      gain.gain.setValueAtTime(0.05, ctx.currentTime);
+      gain.gain.setValueAtTime(0.05 * getEffectsVolume(), ctx.currentTime);
       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
       osc.start();
       osc.stop(ctx.currentTime + 0.04);
@@ -2123,97 +2484,21 @@ k.scene("missao3", () => {
   ]);
   k.tween(1, 0, 1.0, v => { entryFade.opacity = v; }, () => { entryFade.destroy(); });
 
-  // ── Background ───────────────────────────────────────────────────────────
-  k.add([
-    k.sprite("cena3_bg"),
-    k.pos(0, 0),
-    k.scale(SW / 960, SH / 720),
-    k.z(0), k.fixed(),
-  ]);
-
-  // ── Estrelas ─────────────────────────────────────────────────────────────
-  const starPosA = [
-    { x: SW * 0.08, y: SH * 0.04 },
-    { x: SW * 0.18, y: SH * 0.12 },
-    { x: SW * 0.32, y: SH * 0.07 },
-    { x: SW * 0.45, y: SH * 0.18 },
-    { x: SW * 0.58, y: SH * 0.05 },
-    { x: SW * 0.70, y: SH * 0.14 },
-    { x: SW * 0.82, y: SH * 0.08 },
-    { x: SW * 0.92, y: SH * 0.22 },
-  ];
-  starPosA.forEach(({ x, y }, i) => {
-    const s = k.add([
-      k.sprite("sprite_estrela_a"),
-      k.pos(x, y), k.anchor("center"),
-      k.scale(1.0), k.z(1), k.fixed(),
-    ]);
-    k.wait(i * 0.3, () => { s.play("blink"); });
-  });
-
-  const starPosB = [
-    { x: SW * 0.12, y: SH * 0.20 },
-    { x: SW * 0.27, y: SH * 0.24 },
-    { x: SW * 0.50, y: SH * 0.26 },
-    { x: SW * 0.65, y: SH * 0.22 },
-    { x: SW * 0.78, y: SH * 0.27 },
-    { x: SW * 0.88, y: SH * 0.15 },
-  ];
-  starPosB.forEach(({ x, y }, i) => {
-    const s = k.add([
-      k.sprite("sprite_estrela_b"),
-      k.pos(x, y), k.anchor("center"),
-      k.scale(0.8), k.z(1), k.fixed(),
-    ]);
-    k.wait(i * 0.25, () => { s.play("blink"); });
-  });
-
-  const starPosC = [
-    { x: SW * 0.22, y: SH * 0.06 },
-    { x: SW * 0.42, y: SH * 0.12 },
-    { x: SW * 0.62, y: SH * 0.09 },
-    { x: SW * 0.85, y: SH * 0.20 },
-  ];
-  starPosC.forEach(({ x, y }, i) => {
-    const s = k.add([
-      k.sprite("sprite_estrela_c"),
-      k.pos(x, y), k.anchor("center"),
-      k.scale(1.2), k.z(1), k.fixed(),
-    ]);
-    k.wait(i * 0.35, () => { s.play("blink"); });
-  });
-
-  // ── Pilar ─────────────────────────────────────────────────────────────────
-  const pilar = k.add([
-    k.sprite("sprite_pilar"),
-    k.pos(SW * (85 / 960), SH * (60 / 720)),
-    k.anchor("top"),
-    k.scale(SC * 1.2),
-    k.z(3), k.fixed(),
-  ]);
-  pilar.play("light");
-
-  // ── Poste ─────────────────────────────────────────────────────────────────
-  const poste = k.add([
-    k.sprite("sprite_poste"),
-    k.pos(SW * (255 / 960), SH * (65 / 720)),
-    k.anchor("top"),
-    k.scale(SC * 1.1),
-    k.z(3), k.fixed(),
-  ]);
-  poste.play("pulse");
+  // ── Cenário noturno (background + estrelas + pilar + poste) ───────────────
+  addNightScenery();
 
   // ── Personagens ───────────────────────────────────────────────────────────
-  const ENTRY_X       = -48;
-  const ENTRY_Y       = SH * 0.62;
-  const MEET_X        = SW * 0.38;
-  const GIGI_OFFSET_X = 38;
+  const ENTRY_X       = -60;
+  const ENTRY_Y       = SH * 0.72;
+  const MEET_X        = SW * 0.42;
+  const GIGI_OFFSET_X = 220;
 
+  // Vivi entra pela esquerda — z(5) o deixa na frente da Gigi e de todo o cenário
   const vivi = k.add([
     k.sprite("vivi"),
     k.pos(ENTRY_X, ENTRY_Y),
     k.anchor("center"),
-    k.scale(SC * 2.8),
+    k.scale(14),
     k.z(5), k.fixed(),
   ]);
   vivi.play("walk-right");
@@ -2222,15 +2507,15 @@ k.scene("missao3", () => {
     k.sprite("gigi"),
     k.pos(ENTRY_X + GIGI_OFFSET_X, ENTRY_Y),
     k.anchor("center"),
-    k.scale(SC * 2.8),
-    k.z(5), k.fixed(),
+    k.scale(3.5),
+    k.z(4), k.fixed(),
   ]);
   gigi.play("walk-right");
 
   // ── Caixa de diálogo ──────────────────────────────────────────────────────
   const DW          = 460 * SC;
   const DH          = 100 * SC;
-  const DY          = SH - DH / 2 - 12 * SC;
+  const DY          = SH - DH / 2 - 150 * SC;
   const PORTRAIT_CX = SW / 2 - DW / 2 + 50 * SC;
   const TEXT_X      = SW / 2 - DW / 2 + 100 * SC;
 
@@ -2262,17 +2547,19 @@ k.scene("missao3", () => {
     k.z(32), k.fixed(),
   ]);
 
+  const portraitScaleVivi = (80 * SC * 0.7) / 16;
+  const portraitScaleGigi = (80 * SC * 0.20) / 16;
   const portraitVivi = k.add([
     k.sprite("vivi", { frame: 0 }),
     k.pos(PORTRAIT_CX, DY), k.anchor("center"),
-    k.scale(SC * 4),
+    k.scale(portraitScaleVivi),
     k.z(33), k.fixed(),
   ]);
 
   const portraitGigi = k.add([
     k.sprite("gigi", { frame: 0 }),
     k.pos(PORTRAIT_CX, DY), k.anchor("center"),
-    k.scale(SC * 4),
+    k.scale(portraitScaleGigi),
     k.z(33), k.fixed(),
   ]);
 
@@ -2374,7 +2661,7 @@ k.scene("missao3", () => {
     }
   }
 
-  // ── Cena do beijo ─────────────────────────────────────────────────────────
+  // ── Fim da missao3: aproximação e transição para a missao4 ────────────────
   function startKissScene() {
     inKissScene = true;
     vivi.play("walk-left");
@@ -2382,27 +2669,14 @@ k.scene("missao3", () => {
     k.wait(0.4, () => {
       vivi.play("idle-right");
       gigi.play("idle-left");
-      const flashOverlay = k.add([
+      // Fade to black suave; ao final segue direto para a missao4
+      const fadeOut = k.add([
         k.rect(SW, SH), k.pos(0, 0),
-        k.color(255, 255, 255), k.opacity(0),
+        k.color(0, 0, 0), k.opacity(0),
         k.z(70), k.fixed(),
       ]);
-      k.tween(0, 1, 1.2, v => { flashOverlay.opacity = v; });
-      k.wait(1.8, () => {
-        const kissEmoji = k.add([
-          k.text("💋", { size: fs(48) }),
-          k.pos(SW / 2, SH / 2), k.anchor("center"),
-          k.color(255, 255, 255), k.opacity(0),
-          k.z(71), k.fixed(),
-        ]);
-        k.tween(0, 1, 0.4, v => { kissEmoji.opacity = v; });
-        k.wait(2.5, () => {
-          k.tween(1, 0, 1.0, v => {
-            flashOverlay.opacity = v;
-            kissEmoji.opacity    = v;
-          }, () => { k.go("menu"); });
-        });
-      });
+      k.tween(0, 1, 0.8, v => { fadeOut.opacity = v; })
+        .onEnd(() => { k.go("missao4"); });
     });
   }
 
@@ -2450,6 +2724,510 @@ k.scene("missao3", () => {
       }
     }
   });
+});
+
+// ── Cena: MISSÃO 4 – A SINTONIA (minigame dos emojis) ───────────────────
+k.scene("missao4", () => {
+  // ── Estado ───────────────────────────────────────────────────────────────
+  let acertos        = 0;
+  let erros          = 0;
+  let paused         = false;
+  let destroyPause   = null;
+  let gameEnded      = false;   // true ao vencer ou perder
+  let spawnLoop      = null;    // handle do k.loop (para cancelar)
+  let defeatHandlers = [];      // handlers do diálogo de derrota (para cancelar)
+
+  // ── Áudio (Web Audio API) ─────────────────────────────────────────────────
+  let audioCtx4 = null;
+  function getAudioCtx4() {
+    if (!audioCtx4) audioCtx4 = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx4;
+  }
+  function playHitSound() {
+    try {
+      const ctx = getAudioCtx4(), osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = "sine"; osc.frequency.value = 880;            // sino agudo e suave
+      gain.gain.setValueAtTime(0.2 * getEffectsVolume(), ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.start(); osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
+  }
+  function playErrorSound() {
+    try {
+      const ctx = getAudioCtx4(), osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = "square"; osc.frequency.value = 220;          // grave e seco
+      gain.gain.setValueAtTime(0.18 * getEffectsVolume(), ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    } catch (e) {}
+  }
+  function playWinSound() {
+    try {
+      const ctx = getAudioCtx4();
+      [523, 659, 784, 1047].forEach((freq, i) => {            // acorde ascendente
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = "sine"; osc.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.15;
+        gain.gain.setValueAtTime(0.25 * getEffectsVolume(), t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.start(t); osc.stop(t + 0.3);
+      });
+    } catch (e) {}
+  }
+  function playTypingSound() {
+    try {
+      const ctx = getAudioCtx4(), osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 800 + Math.random() * 400;
+      osc.type = "square";
+      gain.gain.setValueAtTime(0.05 * getEffectsVolume(), ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      osc.start(); osc.stop(ctx.currentTime + 0.04);
+    } catch (e) {}
+  }
+
+  // ── Cenário (o mesmo da missao3) ───────────────────────────────────────────
+  addNightScenery();
+
+  // ── Vivi e Gigi: decorativos, parados no canto inferior, atrás dos emojis ──
+  const CHAR_Y = SH * 0.72;
+  const vivi = k.add([
+    k.sprite("vivi"), k.pos(SW * 0.36, CHAR_Y),
+    k.anchor("center"), k.scale(16), k.z(4), k.fixed(),
+  ]);
+  vivi.play("idle-right");
+  const gigi = k.add([
+    k.sprite("gigi"), k.pos(SW * 0.43 + 34, CHAR_Y),
+    k.anchor("center"), k.scale(4), k.z(4), k.fixed(),
+  ]);
+  gigi.play("idle-left");
+
+  // ── HUD: barra de progresso de beijos (esquerda) ──────────────────────────
+  const BAR_W = 200 * SC, BAR_H = 14 * SC;
+  const BAR_X = 16 * SC,  BAR_Y = 30 * SC;
+  const hitsLabel = k.add([
+    k.text("Beijos: 0/15", { size: fs(8), font: "pressstart2p" }),
+    k.pos(BAR_X, 12 * SC), k.color(255, 255, 255), k.z(41), k.fixed(), "hud",
+  ]);
+  k.add([   // fundo cinza escuro da barra
+    k.rect(BAR_W, BAR_H, { radius: 3 * SC }),
+    k.pos(BAR_X, BAR_Y), k.color(40, 40, 48), k.z(40), k.fixed(), "hud",
+  ]);
+  const barFill = k.add([
+    k.rect(1, BAR_H, { radius: 3 * SC }),
+    k.pos(BAR_X, BAR_Y), k.color(255, 105, 180), k.z(41), k.fixed(), "hud",
+  ]);
+  function updateBar() {
+    hitsLabel.text = `Beijos: ${acertos}/15`;
+    const t = Math.min(1, acertos / 15);
+    barFill.width = Math.max(1, BAR_W * t);
+    // gradiente de rosa (255,105,180) -> vermelho (220,60,60)
+    barFill.color = k.rgb(
+      Math.round(255 + (220 - 255) * t),
+      Math.round(105 + ( 60 - 105) * t),
+      Math.round(180 + ( 60 - 180) * t),
+    );
+  }
+
+  // ── HUD: vidas (direita) ──────────────────────────────────────────────────
+  k.add([
+    k.text("Vidas:", { size: fs(8), font: "pressstart2p" }),
+    k.pos(SW - 16 * SC, 12 * SC), k.anchor("topright"),
+    k.color(255, 255, 255), k.z(41), k.fixed(), "hud",
+  ]);
+  const hearts = [];
+  for (let i = 0; i < 3; i++) {
+    hearts.push(k.add([
+      k.text("❤️", { size: fs(14) }),
+      k.pos(SW - 16 * SC - (2 - i) * 30 * SC, 30 * SC), k.anchor("top"),
+      k.z(41), k.fixed(), "hud",
+    ]));
+  }
+  function updateLives() {
+    for (let i = 0; i < 3; i++) {
+      hearts[i].text = (i < 3 - erros) ? "❤️" : "\u{1F494}";  // ❤️ / 💔
+    }
+  }
+
+  // ── Texto flutuante (partícula de feedback) ────────────────────────────────
+  function floatText(x, y, txt, col, rise, dur) {
+    const p = k.add([
+      k.text(txt, { size: fs(12), font: "pressstart2p" }),
+      k.pos(x, y), k.anchor("center"),
+      k.color(col[0], col[1], col[2]), k.opacity(1), k.z(16), k.fixed(),
+    ]);
+    if (rise) k.tween(y, y - 30 * SC, dur, v => { p.pos.y = v; });
+    k.tween(1, 0, dur, v => { p.opacity = v; });
+    k.wait(dur, () => { if (p.exists()) p.destroy(); });
+  }
+
+  // ── Spawn de um emoji ──────────────────────────────────────────────────────
+  function spawnEmoji() {
+    const r = Math.random();
+    let isCorrect, char;
+    if (r < 0.4)      { isCorrect = true;  char = "\u{1F48B}"; }    // 💋 beijo
+    else if (r < 0.65) { isCorrect = true;  char = "❤️"; } // ❤️ coração
+    else              { isCorrect = false; char = "\u{1F445}"; }    // 👅 língua
+
+    // 15% das línguas vêm em vermelho escuro (armadilha visual); penaliza igual
+    const isTrap = !isCorrect && Math.random() < 0.15;
+
+    const maxSpeed  = 260 + (acertos / 15) * 80;   // dificuldade cresce com o progresso
+    const vy        = k.rand(140, maxSpeed) * SC;    // velocidade de queda dos emojis
+    const amplitude = k.rand(15, 35) * SC;          // oscilação lateral
+    const swaySpeed = k.rand(1.6, 3.2);             // suave e individual
+    const phase     = k.rand(0, Math.PI * 2);
+    const edge      = amplitude + SW * 0.05;        // mantém o emoji dentro da tela
+    const x         = k.rand(edge, SW - edge);
+
+    const e = k.add([
+      k.text(char, { size: fs(28) }),
+      k.pos(x, -40), k.anchor("center"),
+      k.area(), k.z(10), k.fixed(), "femoji",
+      { vy, amplitude, swaySpeed, phase, baseX: x, isCorrect, clicked: false },
+    ]);
+    if (isTrap) e.color = k.rgb(150, 30, 40);
+
+    e.onUpdate(() => {
+      if (paused || gameEnded) return;
+      e.pos.y += e.vy * k.dt();
+      e.pos.x  = e.baseX + Math.sin(k.time() * e.swaySpeed + e.phase) * e.amplitude;
+      if (e.pos.y > SH + 40) e.destroy();   // saiu por baixo: descarta sem penalizar
+    });
+
+    e.onClick(() => {
+      if (paused || gameEnded || e.clicked) return;
+      e.clicked = true;
+      if (e.isCorrect) {
+        acertos++;
+        updateBar();
+        playHitSound();
+        floatText(e.pos.x, e.pos.y, "✨ +1", [255, 240, 120], true, 0.5);
+        e.destroy();
+        if (acertos >= 15) onWin();
+      } else {
+        erros++;
+        updateLives();
+        playErrorSound();
+        floatText(e.pos.x, e.pos.y, "✖", [230, 60, 60], false, 0.4);
+        e.destroy();
+        if (erros >= 3) onGameOver();
+      }
+    });
+  }
+
+  function startSpawning() {
+    if (gameEnded) return;
+    spawnLoop = k.loop(0.8, () => {
+      if (paused || gameEnded) return;   // pausa suspende o spawn
+      spawnEmoji();
+    });
+  }
+
+  function stopGame() {
+    gameEnded = true;
+    if (spawnLoop) { spawnLoop.cancel(); spawnLoop = null; }
+    k.get("femoji").forEach(o => o.destroy());
+  }
+
+  // ── Vitória ────────────────────────────────────────────────────────────────
+  function onWin() {
+    if (gameEnded) return;
+    stopGame();
+    playWinSound();
+    recompensasData.find(r => r.id === "beijos").desbloqueada = true;
+    const fade = k.add([
+      k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0),
+      k.opacity(0), k.z(70), k.fixed(),
+    ]);
+    k.tween(0, 1, 1.2, v => { fade.opacity = v; })
+      .onEnd(() => { k.go("menu"); });   // TODO: trocar para k.go("missao5") quando existir
+  }
+
+  // ── Derrota ──────────────────────────────────────────────────────────────────
+  function onGameOver() {
+    if (gameEnded) return;
+    stopGame();
+    const fade = k.add([
+      k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0),
+      k.opacity(0), k.z(70), k.fixed(),
+    ]);
+    k.tween(0, 1, 0.8, v => { fade.opacity = v; })
+      .onEnd(() => { showDefeatScene(fade); });
+  }
+
+  // ── Sub-cena de derrota: mesmo cenário + diálogo + Game Over ─────────────────
+  function showDefeatScene(fade) {
+    k.get("hud").forEach(o => { o.hidden = true; });
+
+    // Vivi e Gigi no centro, parados, de frente um para o outro
+    vivi.pos.x = SW / 2 - 42 * SC; vivi.pos.y = SH * 0.5; vivi.play("idle-right");
+    gigi.pos.x = SW / 2 + 42 * SC; gigi.pos.y = SH * 0.5; gigi.play("idle-left");
+
+    // Revela o cenário (preto -> transparente) e inicia o diálogo
+    k.tween(1, 0, 0.6, v => { fade.opacity = v; })
+      .onEnd(() => { if (fade.exists()) fade.destroy(); startDefeatDialog(); });
+  }
+
+  function startDefeatDialog() {
+    const defeatDialogs = [
+      { speaker: "vivi", name: "Vivi",     text: "vc beijou meu queixo?" },
+      { speaker: "gigi", name: "Giovanna", text: "kkkk desculpa." },
+    ];
+
+    // Caixa de diálogo — mesmo estilo da missao3 (retrato, nome, digitação, seta)
+    const DW = 460 * SC, DH = 100 * SC;
+    const DY = SH - DH / 2 - 12 * SC;
+    const PORTRAIT_CX = SW / 2 - DW / 2 + 50 * SC;
+    const TEXT_X      = SW / 2 - DW / 2 + 100 * SC;
+
+    const dBorder = k.add([k.rect(DW + 4 * SC, DH + 4 * SC, { radius: 12 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(255, 105, 180), k.opacity(0.92), k.z(80), k.fixed()]);
+    const dBg     = k.add([k.rect(DW, DH, { radius: 10 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(18, 4, 32), k.opacity(0.92), k.z(81), k.fixed()]);
+    const pBorder = k.add([k.rect(84 * SC, 84 * SC, { radius: 4 * SC }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.color(255, 105, 180), k.z(82), k.fixed()]);
+    const pFill   = k.add([k.rect(80 * SC, 80 * SC, { radius: 3 * SC }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.color(30, 8, 48), k.z(83), k.fixed()]);
+    const pScaleVivi = (80 * SC * 0.7) / 16;
+    const pScaleGigi = (80 * SC * 0.20) / 16;
+    const pVivi   = k.add([k.sprite("vivi", { frame: 0 }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.scale(pScaleVivi), k.z(84), k.fixed()]);
+    const pGigi   = k.add([k.sprite("gigi", { frame: 0 }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.scale(pScaleGigi), k.z(84), k.fixed()]);
+    const dName   = k.add([k.text("", { size: fs(8), font: "pressstart2p" }), k.pos(TEXT_X, DY - DH / 2 + 14 * SC), k.color(255, 105, 180), k.z(85), k.fixed()]);
+    const dText   = k.add([k.text("", { size: fs(7), font: "pressstart2p", width: DW - 110 * SC, align: "left" }), k.pos(TEXT_X, DY - DH / 2 + 30 * SC), k.color(255, 245, 255), k.z(85), k.fixed()]);
+    const dArrow  = k.add([k.text("▼", { size: fs(8), font: "pressstart2p" }), k.pos(SW / 2 + DW / 2 - 16 * SC, DY + DH / 2 - 14 * SC), k.color(255, 255, 255), k.opacity(0), k.z(85), k.fixed()]);
+    const box = [dBorder, dBg, pBorder, pFill, pVivi, pGigi, dName, dText, dArrow];
+
+    let dIndex = 0, fullText = "", charIdx = 0, typingDone = false, typingHandle = null;
+    let arrowVisible = false, arrowTimer = 0, dialogDone = false;
+
+    function typeText(t) {
+      fullText = t; charIdx = 0; typingDone = false;
+      arrowVisible = false; arrowTimer = 0; dArrow.opacity = 0; dText.text = "";
+      function step() {
+        if (charIdx >= t.length) { typingDone = true; arrowVisible = true; return; }
+        dText.text = t.slice(0, charIdx + 1);
+        playTypingSound();
+        charIdx++;
+        typingHandle = k.wait(0.03, step);
+      }
+      step();
+    }
+
+    function show(i) {
+      const d = defeatDialogs[i];
+      dName.text   = d.name;
+      pVivi.hidden = d.speaker !== "vivi";
+      pGigi.hidden = d.speaker !== "gigi";
+      typeText(d.text);
+    }
+
+    function advance() {
+      if (dialogDone) return;
+      if (!typingDone) {
+        if (typingHandle) { typingHandle.cancel(); typingHandle = null; }
+        dText.text = fullText; typingDone = true; arrowVisible = true;
+        return;
+      }
+      arrowVisible = false; arrowTimer = 0; dArrow.opacity = 0;
+      dIndex++;
+      if (dIndex >= defeatDialogs.length) {
+        dialogDone = true;
+        box.forEach(o => o.destroy());
+        showGameOverScreen();
+      } else {
+        show(dIndex);
+      }
+    }
+
+    const arrowTick = k.onUpdate(() => {
+      if (arrowVisible) {
+        arrowTimer += k.dt();
+        dArrow.opacity = Math.sin(arrowTimer * 6) > 0 ? 1 : 0;
+      }
+    });
+    const h1 = k.onKeyPress("space",  advance);
+    const h2 = k.onKeyPress("return", advance);
+    const h3 = k.onClick(advance);
+    defeatHandlers = [arrowTick, h1, h2, h3];
+
+    show(0);
+  }
+
+  function showGameOverScreen() {
+    defeatHandlers.forEach(h => h.cancel());
+    defeatHandlers = [];
+
+    // Fundo semi-transparente sobre o cenário
+    k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0.72), k.z(86), k.fixed()]);
+    k.add([
+      k.text("GAME OVER", { size: fs(20), font: "pressstart2p", align: "center" }),
+      k.pos(SW / 2, SH * 0.36), k.anchor("center"),
+      k.color(220, 60, 60), k.z(87), k.fixed(),
+    ]);
+    k.add([
+      k.text("Tente de novo!", { size: fs(9), font: "pressstart2p", align: "center" }),
+      k.pos(SW / 2, SH * 0.5), k.anchor("center"),
+      k.color(255, 255, 255), k.z(87), k.fixed(),
+    ]);
+    const retryBtn = k.add([
+      k.rect(264 * SC, 44 * SC, { radius: 10 * SC }),
+      k.pos(SW / 2, SH * 0.64), k.anchor("center"),
+      k.color(200, 70, 90), k.area(), k.z(87), k.fixed(),
+    ]);
+    k.add([
+      k.text("Tentar Novamente", { size: fs(9), font: "pressstart2p", align: "center" }),
+      k.pos(SW / 2, SH * 0.64), k.anchor("center"),
+      k.color(255, 255, 255), k.z(88), k.fixed(),
+    ]);
+    retryBtn.onHover(() => { retryBtn.color = k.rgb(225, 95, 115); document.body.style.cursor = "pointer"; });
+    retryBtn.onHoverEnd(() => { retryBtn.color = k.rgb(200, 70, 90); document.body.style.cursor = "default"; });
+    retryBtn.onClick(() => { document.body.style.cursor = "default"; k.go("missao4"); });
+  }
+
+  // ── Pause (escape) — só durante o jogo ativo ────────────────────────────────
+  k.onKeyPress("escape", () => {
+    if (gameEnded) return;
+    if (paused) {
+      if (destroyPause) { destroyPause(); destroyPause = null; }
+      paused = false;
+    } else {
+      paused = true;
+      destroyPause = makePauseOverlay(() => {
+        paused = false; destroyPause = null;
+        document.body.style.cursor = "default";
+      });
+    }
+  });
+
+  // ── Título da fase → inicia o spawn após o fade out ─────────────────────────
+  const titleShadow = k.add([
+    k.text("Missão 4: A Sintonia", { size: fs(16), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2 + 2 * SC, SH / 2 + 2 * SC), k.anchor("center"),
+    k.color(0, 0, 0), k.opacity(0), k.z(45), k.fixed(),
+  ]);
+  const titleLabel = k.add([
+    k.text("Missão 4: A Sintonia", { size: fs(16), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH / 2), k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0), k.z(46), k.fixed(),
+  ]);
+  k.tween(0, 1, 0.6, v => { titleLabel.opacity = v; titleShadow.opacity = v * 0.6; });
+  k.wait(2.6, () => {
+    k.tween(1, 0, 0.6, v => { titleLabel.opacity = v; titleShadow.opacity = v * 0.6; })
+      .onEnd(() => {
+        if (titleLabel.exists())  titleLabel.destroy();
+        if (titleShadow.exists()) titleShadow.destroy();
+        startSpawning();
+      });
+  });
+
+  updateBar();
+  updateLives();
+});
+
+// ── Cena: CONFIGURAÇÕES ──────────────────────────────────────────────────
+k.scene("configuracoes", () => {
+  // Mesmo fundo do menu
+  const TILE = 16, SCALE = 2, TSIZE = TILE * SCALE;
+  const COLS = Math.ceil(SW / TSIZE) + 1, ROWS = Math.ceil(SH / TSIZE) + 1;
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      k.add([k.sprite(Math.random() < 0.15 ? "flower" : "grass"), k.pos(col * TSIZE, row * TSIZE), k.scale(SCALE), k.z(0)]);
+    }
+  }
+
+  // Painel
+  k.add([k.rect(SW * 0.62 + 4, SH * 0.84 + 4, { radius: 18 }), k.pos(SW/2, SH/2), k.anchor("center"), k.color(240,110,160), k.opacity(0.97), k.z(4)]);
+  k.add([k.rect(SW * 0.62, SH * 0.84, { radius: 15 }), k.pos(SW/2, SH/2), k.anchor("center"), k.color(255,215,232), k.opacity(0.93), k.z(5)]);
+
+  // Título + botão Créditos na mesma linha do topo
+  const PANEL_W = SW * 0.62;
+  const PANEL_TOP = SH / 2 - SH * 0.42;
+  const TITULO_Y  = PANEL_TOP + 28 * SC;
+
+  k.add([
+    k.text("Configurações", { size: fs(14), font: "pressstart2p", align: "center", width: PANEL_W * 0.65 }),
+    k.pos(SW / 2 - PANEL_W * 0.08, TITULO_Y), k.anchor("center"),
+    k.color(170, 28, 88), k.z(6),
+  ]);
+
+  // Botão Créditos — dentro do painel, canto superior direito
+  const creditosBtn = k.add([
+    k.rect(80 * SC, 24 * SC, { radius: 6 * SC }),
+    k.pos(SW / 2 + PANEL_W / 2 - 14 * SC, TITULO_Y), k.anchor("right"),
+    k.color(100, 58, 155), k.area(), k.z(7),
+  ]);
+  k.add([
+    k.text("Créditos", { size: fs(7), font: "pressstart2p", align: "center", width: 78 * SC }),
+    k.pos(SW / 2 + PANEL_W / 2 - 14 * SC - 40 * SC, TITULO_Y), k.anchor("center"),
+    k.color(255, 255, 255), k.z(8),
+  ]);
+  creditosBtn.onHover(() => { creditosBtn.color = k.rgb(130, 80, 185); document.body.style.cursor = "pointer"; });
+  creditosBtn.onHoverEnd(() => { creditosBtn.color = k.rgb(100, 58, 155); document.body.style.cursor = "default"; });
+  creditosBtn.onClick(() => { document.body.style.cursor = "default"; abrirCreditos(); });
+
+  // ── Sliders de volume ─────────────────────────────────────────────────────
+  // Layout horizontal: [Label 65*SC] [gap] [- btn 22*SC] [gap] [barra 110*SC] [gap] [+ btn 22*SC] [gap] [% fs(6)]
+  // Todos alinhados ao centro vertical da mesma linha Y
+  const sliders = [
+    { label: "Geral",   get: () => volumeGeral,   set: (v) => { volumeGeral   = v; } },
+    { label: "Efeitos", get: () => volumeEfeitos, set: (v) => { volumeEfeitos = v; } },
+    { label: "Musica",  get: () => volumeMusica,  set: (v) => { volumeMusica  = v; } },
+  ];
+
+  const PL      = SW / 2 - PANEL_W / 2;    // borda esquerda do painel
+  const LBL_W   = 65 * SC;
+  const BTN_S   = 22 * SC;
+  const BAR_N   = 110 * SC;
+  const BAR_H   = 12 * SC;
+  const GAP_S   = 8 * SC;
+  const INNER_L = PL + 18 * SC;            // margem interna esquerda
+
+  const lX  = INNER_L;                              // label: âncora left
+  const mCX = lX + LBL_W + GAP_S + BTN_S / 2;      // centro do botão -
+  const bLX = mCX + BTN_S / 2 + GAP_S;             // barra: âncora left
+  const pCX = bLX + BAR_N + GAP_S + BTN_S / 2;     // centro do botão +
+  const vLX = pCX + BTN_S / 2 + GAP_S;             // valor: âncora left
+
+  const ROW_START_Y = SH / 2 - 50 * SC;
+  const ROW_STEP    = 55 * SC;
+
+  sliders.forEach((s, i) => {
+    const y = ROW_START_Y + i * ROW_STEP;
+
+    k.add([
+      k.text(s.label, { size: fs(8), font: "pressstart2p" }),
+      k.pos(lX, y), k.anchor("left"),
+      k.color(170, 28, 88), k.z(6),
+    ]);
+
+    k.add([k.rect(BAR_N, BAR_H, { radius: 4 * SC }), k.pos(bLX, y), k.anchor("left"), k.color(200, 150, 180), k.z(6)]);
+    const barFill = k.add([k.rect(Math.max(1, BAR_N * s.get()), BAR_H, { radius: 4 * SC }), k.pos(bLX, y), k.anchor("left"), k.color(250, 115, 162), k.z(7)]);
+    const valLabel = k.add([k.text(`${Math.round(s.get() * 100)}%`, { size: fs(6), font: "pressstart2p" }), k.pos(vLX, y), k.anchor("left"), k.color(120, 60, 100), k.z(6)]);
+
+    function update() {
+      barFill.width = Math.max(1, BAR_N * s.get());
+      valLabel.text = `${Math.round(s.get() * 100)}%`;
+    }
+
+    const minusBtn = k.add([k.rect(BTN_S, BTN_S, { radius: 4 * SC }), k.pos(mCX, y), k.anchor("center"), k.color(200, 80, 120), k.area(), k.z(7)]);
+    k.add([k.text("-", { size: fs(10), font: "pressstart2p" }), k.pos(mCX, y), k.anchor("center"), k.color(255, 255, 255), k.z(8)]);
+    minusBtn.onHover(() => { minusBtn.color = k.rgb(230, 100, 140); document.body.style.cursor = "pointer"; });
+    minusBtn.onHoverEnd(() => { minusBtn.color = k.rgb(200, 80, 120); document.body.style.cursor = "default"; });
+    minusBtn.onClick(() => { s.set(Math.max(0, Math.round((s.get() - 0.1) * 10) / 10)); update(); });
+
+    const plusBtn = k.add([k.rect(BTN_S, BTN_S, { radius: 4 * SC }), k.pos(pCX, y), k.anchor("center"), k.color(200, 80, 120), k.area(), k.z(7)]);
+    k.add([k.text("+", { size: fs(10), font: "pressstart2p" }), k.pos(pCX, y), k.anchor("center"), k.color(255, 255, 255), k.z(8)]);
+    plusBtn.onHover(() => { plusBtn.color = k.rgb(230, 100, 140); document.body.style.cursor = "pointer"; });
+    plusBtn.onHoverEnd(() => { plusBtn.color = k.rgb(200, 80, 120); document.body.style.cursor = "default"; });
+    plusBtn.onClick(() => { s.set(Math.min(1, Math.round((s.get() + 0.1) * 10) / 10)); update(); });
+  });
+
+  // Botão Voltar
+  const voltarBtn = k.add([k.rect(SW * 0.44, SH * 0.10, { radius: 10 }), k.pos(SW/2, SH/2 + SH*0.34), k.anchor("center"), k.color(250,115,162), k.area(), k.z(6)]);
+  k.add([k.text("< Voltar", { size: fs(10), font: "pressstart2p", align: "center" }), k.pos(SW/2, SH/2 + SH*0.34), k.anchor("center"), k.color(255,255,255), k.z(7)]);
+  voltarBtn.onHover(() => { voltarBtn.color = k.rgb(255,75,130); document.body.style.cursor = "pointer"; });
+  voltarBtn.onHoverEnd(() => { voltarBtn.color = k.rgb(250,115,162); document.body.style.cursor = "default"; });
+  voltarBtn.onClick(() => { document.body.style.cursor = "default"; k.go("menu"); });
 });
 
 k.go("menu");

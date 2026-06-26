@@ -1649,6 +1649,9 @@ k.scene("selecionar_fase", () => {
     { label: "Fase 4: A Sintonia", scene: "missao4", color: [180,  60,  80] },
     { label: "Fase 5: A Subida",   scene: "subida",  color: [240, 140,  50] },
     { label: "Fase 6: O Pedido",   scene: "pedido",  color: [ 90, 160, 220] },
+    { label: "Fase 7: Os Fogos",   scene: "fogos",          color: [230, 180,  40] },
+    { label: "Fase 8: A Batalha", scene: "dialogo_batalha", color: [220,  80, 140] },
+    { label: "Fim ❤️",           scene: "final",           color: [255, 215,  60] },
   ];
   const FASES_POR_PAGINA = 3;
   let paginaAtual = 0;
@@ -1709,7 +1712,7 @@ k.scene("selecionar_fase", () => {
       ]);
       antBtn.onHover(() => { antBtn.color = k.rgb(110, 110, 140); document.body.style.cursor = "pointer"; });
       antBtn.onHoverEnd(() => { antBtn.color = k.rgb(80, 80, 110); document.body.style.cursor = "default"; });
-      antBtn.onClick(() => { document.body.style.cursor = "default"; paginaAtual--; renderFases(); });
+      antBtn.onClick(() => { document.body.style.cursor = "default"; paginaAtual--; k.wait(0, renderFases); });
     }
 
     // Seta "Prox >"
@@ -1733,7 +1736,7 @@ k.scene("selecionar_fase", () => {
       ]);
       proxBtn.onHover(() => { proxBtn.color = k.rgb(110, 110, 140); document.body.style.cursor = "pointer"; });
       proxBtn.onHoverEnd(() => { proxBtn.color = k.rgb(80, 80, 110); document.body.style.cursor = "default"; });
-      proxBtn.onClick(() => { document.body.style.cursor = "default"; paginaAtual++; renderFases(); });
+      proxBtn.onClick(() => { document.body.style.cursor = "default"; paginaAtual++; k.wait(0, renderFases); });
     }
 
     // Indicador de página — centralizado entre as setas
@@ -3680,7 +3683,7 @@ k.scene("subida", () => {
 // ── Cena: PEDIDO – Rampa do Cristo, pôr do sol ───────────────────────────
 k.scene("pedido", () => {
   // ── Constantes ────────────────────────────────────────────────────────────
-  const GROUND_Y = SH * 0.74;
+  const GROUND_Y = SH * 0.62;
   let paused = false, destroyPause = null, sceneEnded = false;
 
   // ── Áudio – Web Audio API ─────────────────────────────────────────────────
@@ -3741,7 +3744,7 @@ k.scene("pedido", () => {
   }
 
   // ── Sol com halo e pulso ───────────────────────────────────────────────────
-  const SUN_Y = SH * 0.62;
+  const SUN_Y = GROUND_Y - 30 * SC;
   const halo = k.add([
     k.circle(62 * SC), k.pos(SW * 0.68, SUN_Y), k.anchor("center"),
     k.color(255, 200, 100), k.opacity(0.30), k.z(1), k.fixed(),
@@ -3769,7 +3772,39 @@ k.scene("pedido", () => {
   k.add([k.rect(SW, SH - GROUND_Y + 2), k.pos(0, GROUND_Y), k.color(120, 90, 60), k.z(2), k.fixed()]);
   k.add([k.rect(SW, 3 * SC), k.pos(0, GROUND_Y), k.color(150, 115, 75), k.z(3), k.fixed()]);
 
-  // ── Estrelinhas (aparecem gradualmente com o diálogo) ─────────────────────
+  // ── Estrelas sprite (padrão missao3) ──────────────────────────────────────
+  const skyH = GROUND_Y;
+  const starPosA = [
+    { x: SW * 0.08, y: skyH * 0.08 }, { x: SW * 0.18, y: skyH * 0.24 },
+    { x: SW * 0.32, y: skyH * 0.14 }, { x: SW * 0.45, y: skyH * 0.36 },
+    { x: SW * 0.58, y: skyH * 0.10 }, { x: SW * 0.70, y: skyH * 0.28 },
+    { x: SW * 0.82, y: skyH * 0.16 }, { x: SW * 0.92, y: skyH * 0.44 },
+  ];
+  starPosA.forEach(({ x, y }, i) => {
+    const s = k.add([k.sprite("sprite_estrela_a"), k.pos(x, y), k.anchor("center"), k.scale(1.0), k.z(1), k.fixed()]);
+    k.wait(i * 0.3, () => { s.play("blink"); });
+  });
+
+  const starPosB = [
+    { x: SW * 0.12, y: skyH * 0.40 }, { x: SW * 0.27, y: skyH * 0.48 },
+    { x: SW * 0.50, y: skyH * 0.52 }, { x: SW * 0.65, y: skyH * 0.44 },
+    { x: SW * 0.78, y: skyH * 0.54 }, { x: SW * 0.88, y: skyH * 0.30 },
+  ];
+  starPosB.forEach(({ x, y }, i) => {
+    const s = k.add([k.sprite("sprite_estrela_b"), k.pos(x, y), k.anchor("center"), k.scale(0.8), k.z(1), k.fixed()]);
+    k.wait(i * 0.25, () => { s.play("blink"); });
+  });
+
+  const starPosC = [
+    { x: SW * 0.22, y: skyH * 0.12 }, { x: SW * 0.42, y: skyH * 0.24 },
+    { x: SW * 0.62, y: skyH * 0.18 }, { x: SW * 0.85, y: skyH * 0.40 },
+  ];
+  starPosC.forEach(({ x, y }, i) => {
+    const s = k.add([k.sprite("sprite_estrela_c"), k.pos(x, y), k.anchor("center"), k.scale(1.2), k.z(1), k.fixed()]);
+    k.wait(i * 0.35, () => { s.play("blink"); });
+  });
+
+  // ── Estrelinhas ★ (aparecem gradualmente com o diálogo) ───────────────────
   const STAR_POSITIONS = [
     [SW * 0.08, SH * 0.06], [SW * 0.22, SH * 0.12], [SW * 0.40, SH * 0.05],
     [SW * 0.58, SH * 0.10], [SW * 0.72, SH * 0.04], [SW * 0.85, SH * 0.15],
@@ -3797,10 +3832,10 @@ k.scene("pedido", () => {
   }
 
   // ── Personagens ───────────────────────────────────────────────────────────
-  const VIVI_X = SW * 0.38, GIGI_X = SW * 0.52;
+  const VIVI_X = SW * 0.45, GIGI_X = SW * 0.52;
   const vivi = k.add([
     k.sprite("vivi"), k.pos(VIVI_X, GROUND_Y), k.anchor("bot"),
-    k.scale(8), k.z(6), k.fixed(),
+    k.scale(9), k.z(6), k.fixed(),
   ]);
   vivi.play("idle-right");
 
@@ -3823,7 +3858,7 @@ k.scene("pedido", () => {
     if (!sweatActive) return;
     const sw = k.add([
       k.text("💧", { size: fs(9) }),
-      k.pos(VIVI_X + k.rand(-14, 14) * SC, GROUND_Y - 110 * SC), k.anchor("center"),
+      k.pos(VIVI_X + k.rand(-14, 14) * SC, GROUND_Y - 20 * SC), k.anchor("center"),
       k.opacity(1), k.z(8), k.fixed(),
     ]);
     k.tween(sw.pos.y, sw.pos.y - 28 * SC, 0.8, v => { sw.pos.y = v; });
@@ -3910,7 +3945,7 @@ k.scene("pedido", () => {
     // Revelar estrelas a cada 2 falas
     if (i > 0 && i % 2 === 0) revealNextStars();
     // Vivi vira para Gigi na fala "Gi."
-    if (d.text === "Gi.") { viviShaking = false; vivi.pos.x = viviBaseX; vivi.play("idle-left"); }
+    if (d.text === "Gi.") { viviShaking = false; vivi.pos.x = viviBaseX; vivi.play("idle-right"); }
     // Parar suor a partir da pergunta
     if (d.text === "Deixa eu te fazer uma pergunta.") sweatActive = false;
     dName.text = d.name;
@@ -4015,13 +4050,13 @@ k.scene("pedido", () => {
     function showButtons(l1, s1, l2, s2) {
       // Botão SIM
       const simBtn = k.add([k.rect(140 * SC, 50 * SC, { radius: 10 * SC }), k.pos(SW / 2 - 90 * SC, SH * 0.64), k.anchor("center"), k.color(60, 180, 80), k.scale(0), k.area(), k.z(40), k.fixed()]);
-      const simLbl = k.add([k.text("SIM 💛", { size: fs(11), font: "pressstart2p", align: "center" }), k.pos(SW / 2 - 90 * SC, SH * 0.64), k.anchor("center"), k.color(255, 255, 255), k.scale(0), k.z(41), k.fixed()]);
+      const simLbl = k.add([k.text("SIM", { size: fs(11), font: "pressstart2p", align: "center" }), k.pos(SW / 2 - 90 * SC, SH * 0.64), k.anchor("center"), k.color(255, 255, 255), k.scale(0), k.z(41), k.fixed()]);
       k.tween(0, 1, 0.25, v => { simBtn.scale.x = v; simBtn.scale.y = v; simLbl.scale.x = v; simLbl.scale.y = v; });
 
       // Botão NÃO
       let naoClicks = 0;
       const naoBtn = k.add([k.rect(140 * SC, 50 * SC, { radius: 10 * SC }), k.pos(SW / 2 + 90 * SC, SH * 0.64), k.anchor("center"), k.color(200, 60, 60), k.scale(0), k.area(), k.z(40), k.fixed()]);
-      const naoLbl = k.add([k.text("NAO", { size: fs(11), font: "pressstart2p", align: "center" }), k.pos(SW / 2 + 90 * SC, SH * 0.64), k.anchor("center"), k.color(255, 255, 255), k.scale(0), k.z(41), k.fixed()]);
+      const naoLbl = k.add([k.text("NÃO", { size: fs(11), font: "pressstart2p", align: "center" }), k.pos(SW / 2 + 90 * SC, SH * 0.64), k.anchor("center"), k.color(255, 255, 255), k.scale(0), k.z(41), k.fixed()]);
       k.wait(0.1, () => {
         k.tween(0, 1, 0.25, v => { naoBtn.scale.x = v; naoBtn.scale.y = v; naoLbl.scale.x = v; naoLbl.scale.y = v; });
       });
@@ -4128,6 +4163,984 @@ k.scene("pedido", () => {
   }
 });
 
+// ── Cena: FOGOS – celebração do SIM ─────────────────────────────────────
+k.scene("fogos", () => {
+  const GROUND_Y = SH * 0.62;
+  let paused = false, destroyPause = null, sceneEnded = false;
+  let canContinue = false;   // libera input de saída após 18s
+
+  // ── Áudio ────────────────────────────────────────────────────────────────
+  let actx = null;
+  function ctxA() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    return actx;
+  }
+  function beep(freq, type, dur, vol, t0) {
+    try {
+      const c = ctxA(), o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type; o.frequency.value = freq;
+      const st = t0 ?? c.currentTime;
+      g.gain.setValueAtTime(vol * getEffectsVolume(), st);
+      g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+      o.start(st); o.stop(st + dur);
+    } catch (e) {}
+  }
+
+  // Som de explosão: ruído via buffers + pitch descendente
+  function playBoom() {
+    try {
+      const c = ctxA();
+      // pitch descendente
+      const o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = "sawtooth";
+      const baseF = k.rand(200, 600);
+      o.frequency.setValueAtTime(baseF, c.currentTime);
+      o.frequency.exponentialRampToValueAtTime(30, c.currentTime + 0.25);
+      g.gain.setValueAtTime(0.15 * getEffectsVolume(), c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.25);
+      o.start(); o.stop(c.currentTime + 0.25);
+      // noise burst
+      const bufSize = c.sampleRate * 0.12;
+      const buf = c.createBuffer(1, bufSize, c.sampleRate);
+      const data = buf.getChannelData(0);
+      for (let i = 0; i < bufSize; i++) data[i] = Math.random() * 2 - 1;
+      const src = c.createBufferSource(), ng = c.createGain();
+      src.buffer = buf; src.connect(ng); ng.connect(c.destination);
+      ng.gain.setValueAtTime(0.12 * getEffectsVolume(), c.currentTime);
+      ng.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.12);
+      src.start();
+    } catch (e) {}
+  }
+
+  // Melodia eufórica em loop (sequência suave ascendente)
+  let melodyHandle = null;
+  const MEL = [523, 659, 784, 880, 1047, 880, 784, 659, 523, 392, 440, 523];
+  function playMel(i) {
+    if (sceneEnded) return;
+    beep(MEL[i % MEL.length], "sine", 0.38, 0.07);
+    melodyHandle = k.wait(0.42, () => playMel(i + 1));
+  }
+  playMel(0);
+
+  // ── Céu (pôr do sol, p=1, igual à cena pedido) ───────────────────────────
+  const SKY_BANDS = 8;
+  const bandH = GROUND_Y / SKY_BANDS;
+  const sunTop_c = [60, 40, 110], sunBot_c = [255, 150, 60];
+  for (let i = 0; i < SKY_BANDS; i++) {
+    const t = i / (SKY_BANDS - 1);
+    k.add([
+      k.rect(SW, bandH + 2), k.pos(0, i * bandH),
+      k.color(
+        Math.round(sunTop_c[0] + (sunBot_c[0] - sunTop_c[0]) * t),
+        Math.round(sunTop_c[1] + (sunBot_c[1] - sunTop_c[1]) * t),
+        Math.round(sunTop_c[2] + (sunBot_c[2] - sunTop_c[2]) * t),
+      ),
+      k.z(0), k.fixed(),
+    ]);
+  }
+
+  // Sol
+  const SUN_Y = GROUND_Y - 30 * SC;
+  const halo = k.add([k.circle(62 * SC), k.pos(SW * 0.68, SUN_Y), k.anchor("center"), k.color(255, 200, 100), k.opacity(0.30), k.z(1), k.fixed()]);
+  const sun  = k.add([k.circle(55 * SC), k.pos(SW * 0.68, SUN_Y), k.anchor("center"), k.color(255, 160, 60),  k.opacity(0.95), k.z(2), k.fixed()]);
+  k.onUpdate(() => {
+    if (sceneEnded) return;
+    const r = (53 + Math.sin(k.time() * 1.5) * 2) * SC;
+    sun.radius = r; halo.radius = r + 8 * SC;
+  });
+
+  // Morros
+  [[SW * 0.10, 130], [SW * 0.30, 110], [SW * 0.55, 145], [SW * 0.80, 120]].forEach(([x, r]) => {
+    k.add([k.circle(r * SC), k.pos(x, GROUND_Y + r * SC * 0.5), k.anchor("center"), k.color(40, 25, 55), k.z(1), k.fixed()]);
+  });
+
+  // Chão
+  k.add([k.rect(SW, SH - GROUND_Y + 2), k.pos(0, GROUND_Y), k.color(120, 90, 60), k.z(2), k.fixed()]);
+  k.add([k.rect(SW, 3 * SC), k.pos(0, GROUND_Y), k.color(150, 115, 75), k.z(3), k.fixed()]);
+
+  // Estrelas sprite (todas visíveis desde o início, opacity=1)
+  const skyH = GROUND_Y;
+  [
+    { spr: "sprite_estrela_a", scale: 1.0, delay: 0.3,  pos: [
+      [SW*0.08,skyH*0.08],[SW*0.18,skyH*0.24],[SW*0.32,skyH*0.14],[SW*0.45,skyH*0.36],
+      [SW*0.58,skyH*0.10],[SW*0.70,skyH*0.28],[SW*0.82,skyH*0.16],[SW*0.92,skyH*0.44],
+    ]},
+    { spr: "sprite_estrela_b", scale: 0.8, delay: 0.25, pos: [
+      [SW*0.12,skyH*0.40],[SW*0.27,skyH*0.48],[SW*0.50,skyH*0.52],
+      [SW*0.65,skyH*0.44],[SW*0.78,skyH*0.54],[SW*0.88,skyH*0.30],
+    ]},
+    { spr: "sprite_estrela_c", scale: 1.2, delay: 0.35, pos: [
+      [SW*0.22,skyH*0.12],[SW*0.42,skyH*0.24],[SW*0.62,skyH*0.18],[SW*0.85,skyH*0.40],
+    ]},
+  ].forEach(({ spr, scale, delay, pos }) => {
+    pos.forEach(([x, y], i) => {
+      const s = k.add([k.sprite(spr), k.pos(x, y), k.anchor("center"), k.scale(scale), k.opacity(1), k.z(1), k.fixed()]);
+      k.wait(i * delay, () => { s.play("blink"); });
+    });
+  });
+
+  // ── Personagens ───────────────────────────────────────────────────────────
+  const VIVI_X = SW * 0.46, GIGI_X = SW * 0.52;
+  const vivi = k.add([k.sprite("vivi"), k.pos(VIVI_X, GROUND_Y), k.anchor("bot"), k.scale(9), k.z(6), k.fixed()]);
+  vivi.play("idle-right");
+  const gigi = k.add([k.sprite("gigi"), k.pos(GIGI_X, GROUND_Y), k.anchor("bot"), k.scale(2.2), k.z(6), k.fixed()]);
+  gigi.play("idle-left");
+
+  // Coraçãozinho flutuando entre eles a cada 1s
+  function spawnHeart() {
+    if (sceneEnded) return;
+    const h = k.add([ 
+      k.text("❤️", { size: fs(14) }),
+      k.pos((VIVI_X + GIGI_X) / 2, GROUND_Y - 60 * SC), k.anchor("center"),
+      k.opacity(1), k.z(8), k.fixed(),
+    ]);
+    k.tween(h.pos.y, h.pos.y - 50 * SC, 1.0, v => { h.pos.y = v; });
+    k.tween(1, 0, 1.0, v => { h.opacity = v; });
+    k.wait(1.05, () => { if (h.exists()) h.destroy(); });
+  }
+  k.wait(1.0, () => {
+    spawnHeart();
+    k.loop(2.0, () => { spawnHeart(); });
+  });
+
+  // ── Sistema de fogos de artifício ─────────────────────────────────────────
+  const PALETA = [
+    [255, 220,  50],   // dourado
+    [255, 100, 180],   // rosa
+    [ 80, 220, 255],   // ciano
+    [100, 255, 120],   // verde
+    [255, 255, 255],   // branco
+    [255, 160,  50],   // laranja
+  ];
+
+  function explode(x, y, cor, sizeMul) {
+    const count = Math.round(k.rand(18, 28) * sizeMul);
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * Math.PI * 2 + k.rand(-0.2, 0.2);
+      const spd   = k.rand(60, 180) * SC * sizeMul;
+      const dur   = k.rand(0.6, 1.2);
+      const isStar = Math.random() < 0.20;
+      let p;
+      if (isStar) {
+        p = k.add([
+          k.text("★", { size: fs(8) }),
+          k.pos(x, y), k.anchor("center"),
+          k.color(cor[0], cor[1], cor[2]), k.opacity(1), k.z(14), k.fixed(),
+          { vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd, rot: k.rand(1, 3) * (Math.random() < 0.5 ? 1 : -1) },
+        ]);
+      } else {
+        p = k.add([
+          k.rect(4 * SC, 4 * SC, { radius: 1 * SC }),
+          k.pos(x, y), k.anchor("center"),
+          k.color(cor[0], cor[1], cor[2]), k.opacity(1), k.z(14), k.fixed(),
+          { vx: Math.cos(angle) * spd, vy: Math.sin(angle) * spd, rot: k.rand(1, 3) * (Math.random() < 0.5 ? 1 : -1) },
+        ]);
+      }
+      p.onUpdate(() => {
+        p.pos.x += p.vx * k.dt();
+        p.pos.y += p.vy * k.dt();
+        p.vy    += 80 * SC * k.dt();   // gravidade leve
+        p.angle += p.rot;
+      });
+      k.tween(1, 0, dur, v => { p.opacity = v; });
+      k.wait(dur + 0.05, () => { if (p.exists()) p.destroy(); });
+    }
+  }
+
+  function launchRocket() {
+    if (sceneEnded || paused) return;
+    const rx      = k.rand(SW * 0.05, SW * 0.95);
+    const targetY = k.rand(SH * 0.08, SH * 0.50);
+    const cor     = PALETA[Math.floor(Math.random() * PALETA.length)];
+    const spd     = (SH - targetY) / k.rand(0.5, 0.9);  // pixels por segundo
+
+    // Foguete move via onUpdate — sem loop aninhado
+    const rocket = k.add([
+      k.rect(4 * SC, 6 * SC, { radius: 1 * SC }),
+      k.pos(rx, SH), k.anchor("bot"),
+      k.color(255, 230, 160), k.opacity(1), k.z(13), k.fixed(),
+      { trailTimer: 0, spd, targetY, cor, done: false },
+    ]);
+
+    rocket.onUpdate(() => {
+      if (rocket.done) return;
+      rocket.pos.y -= rocket.spd * k.dt();
+
+      // Rastro segue a posição atual do foguete
+      rocket.trailTimer += k.dt();
+      if (rocket.trailTimer >= 0.045) {
+        rocket.trailTimer = 0;
+        const tr = k.add([
+          k.rect(3 * SC, 3 * SC, { radius: 1 * SC }),
+          k.pos(rocket.pos.x, rocket.pos.y + 4 * SC), k.anchor("center"),
+          k.color(255, 200, 100), k.opacity(0.65), k.z(12), k.fixed(),
+        ]);
+        k.tween(0.65, 0, 0.14, v => { if (tr.exists()) tr.opacity = v; });
+        k.wait(0.15, () => { if (tr.exists()) tr.destroy(); });
+      }
+
+      // Chegou ao alvo: explode e se destrói
+      if (rocket.pos.y <= rocket.targetY) {
+        rocket.done = true;
+        const px = rocket.pos.x, py = rocket.pos.y;
+        const rCor = rocket.cor;
+        if (rocket.exists()) rocket.destroy();
+        playBoom();
+        explode(px, py, rCor, 1.0);
+        if (Math.random() < 0.30) {
+          k.wait(0.15, () => { explode(px + k.rand(-20, 20) * SC, py + k.rand(-15, 15) * SC, rCor, 0.55); });
+        }
+      }
+    });
+  }
+
+  // Spawn de foguetes em loop com intervalo fixo — cancela após 18s
+  const rocketLoop = k.loop(0.8, () => { launchRocket(); });
+
+  // ── Texto comemorativo ────────────────────────────────────────────────────
+  const simShad = k.add([
+    k.text("SIM!!!", { size: fs(20), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2 + 2 * SC, SH * 0.22 + 2 * SC), k.anchor("center"),
+    k.color(0, 0, 0), k.opacity(0), k.scale(1), k.z(16), k.fixed(),
+  ]);
+  const simLbl = k.add([
+    k.text("SIM!!!", { size: fs(20), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH * 0.22), k.anchor("center"),
+    k.color(255, 220, 50), k.opacity(0), k.scale(1), k.z(17), k.fixed(),
+  ]);
+  k.wait(1.0, () => {
+    simShad.opacity = 1; simLbl.opacity = 1;
+    simLbl.scale.x = 0; simLbl.scale.y = 0;
+    simShad.scale.x = 0; simShad.scale.y = 0;
+    k.tween(0, 1.2, 0.2, v => { simLbl.scale.x = v; simLbl.scale.y = v; simShad.scale.x = v; simShad.scale.y = v; });
+    k.wait(0.22, () => k.tween(1.2, 1.0, 0.12, v => { simLbl.scale.x = v; simLbl.scale.y = v; simShad.scale.x = v; simShad.scale.y = v; }));
+  });
+
+  const dateShad = k.add([
+    k.text("28 de junho de 2022", { size: fs(9), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2 + 2 * SC, SH * 0.30 + 2 * SC), k.anchor("center"),
+    k.color(0, 0, 0), k.opacity(0), k.scale(1), k.z(16), k.fixed(),
+  ]);
+  const dateLbl = k.add([
+    k.text("28 de junho de 2022", { size: fs(9), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH * 0.30), k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0), k.scale(1), k.z(17), k.fixed(),
+  ]);
+  k.wait(1.8, () => { dateShad.opacity = 1; dateLbl.opacity = 1; });
+
+  // Pulso suave nos textos
+  k.onUpdate(() => {
+    if (simLbl.opacity < 0.5) return;
+    const p = 1.0 + Math.sin(k.time() * 2) * 0.04;
+    simLbl.scale.x = p; simLbl.scale.y = p;
+    simShad.scale.x = p; simShad.scale.y = p;
+    dateLbl.scale.x = p; dateLbl.scale.y = p;
+    dateShad.scale.x = p; dateShad.scale.y = p;
+  });
+
+  // ── Prompt de saída após 12s ──────────────────────────────────────────────
+  let promptVisible = false;
+  const contShad = k.add([
+    k.text("Toque para continuar...", { size: fs(8), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2 + 2 * SC, SH * 0.88 + 2 * SC), k.anchor("center"),
+    k.color(0, 0, 0), k.opacity(0), k.z(16), k.fixed(),
+  ]);
+  const contLbl = k.add([
+    k.text("Toque para continuar...", { size: fs(8), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH * 0.88), k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0), k.z(17), k.fixed(),
+  ]);
+  k.wait(18, () => {
+    rocketLoop.cancel();
+    canContinue = true;
+    promptVisible = true;
+  });
+  k.onUpdate(() => {
+    if (!promptVisible) return;
+    const op = 0.5 + Math.sin(k.time() * 4) * 0.5;
+    contLbl.opacity = op; contShad.opacity = op * 0.7;
+  });
+
+  function goNext() {
+    if (!canContinue || sceneEnded) return;
+    sceneEnded = true;
+    if (melodyHandle) melodyHandle.cancel();
+    promptVisible = false;
+    const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(70), k.fixed()]);
+    k.tween(0, 1, 1.0, v => { fade.opacity = v; }).onEnd(() => {
+      k.go("dialogo_batalha");
+    });
+  }
+
+  k.onKeyPress("space",  goNext);
+  k.onKeyPress("return", goNext);
+  k.onMousePress("left", goNext);
+
+  // ── Pause ─────────────────────────────────────────────────────────────────
+  k.onKeyPress("escape", () => {
+    if (sceneEnded) return;
+    if (paused) {
+      if (destroyPause) { destroyPause(); destroyPause = null; }
+      paused = false;
+    } else {
+      paused = true;
+      destroyPause = makePauseOverlay(() => { paused = false; destroyPause = null; });
+    }
+  });
+});
+
+// ── Cena: DIÁLOGO ANTES DA BATALHA ───────────────────────────────────────
+k.scene("dialogo_batalha", () => {
+
+  // fundo de grama
+  const TILE = 16, TSCALE = 2, TSIZE = TILE * TSCALE;
+  const COLS = Math.ceil(SW / TSIZE) + 1, ROWS = Math.ceil(SH / TSIZE) + 1;
+  for (let r = 0; r < ROWS; r++)
+    for (let c = 0; c < COLS; c++)
+      k.add([k.sprite(Math.random() < 0.12 ? "flower" : "grass"), k.pos(c * TSIZE, r * TSIZE), k.scale(TSCALE), k.z(0)]);
+
+  // fade de entrada
+  const entryFade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(1), k.z(60), k.fixed()]);
+  k.tween(1, 0, 1.0, v => { entryFade.opacity = v; }).onEnd(() => { if (entryFade.exists()) entryFade.destroy(); });
+
+  // personagens frente a frente
+  const CHAR_Y = SH * 0.50;
+  const vivi = k.add([k.sprite("vivi"), k.pos(SW * 0.20, CHAR_Y), k.anchor("center"), k.scale(8.5), k.z(5), k.fixed()]);
+  vivi.play("idle-right");
+  const gigi = k.add([k.sprite("gigi"), k.pos(SW * 0.80, CHAR_Y), k.anchor("center"), k.scale(2.2), k.z(4), k.fixed()]);
+  gigi.play("idle-left");
+
+  // áudio de digitação
+  let actxD = null;
+  function getActxD() { if (!actxD) actxD = new (window.AudioContext || window.webkitAudioContext)(); return actxD; }
+  function playTyping() {
+    try {
+      const ctx = getActxD(), o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.type = "square"; o.frequency.value = 800 + Math.random() * 400;
+      g.gain.setValueAtTime(0.05 * getEffectsVolume(), ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
+      o.start(); o.stop(ctx.currentTime + 0.04);
+    } catch (e) {}
+  }
+
+  // estado do diálogo
+  let dialogIndex = 0, dialogActive = false;
+  let typingDone = false, arrowVisible = false, arrowTimer = 0;
+  let currentFullText = "", currentCharIdx = 0, typingHandle = null;
+
+  // caixa de diálogo
+  const DW = 460 * SC, DH = 100 * SC;
+  const DY = SH - DH / 2 - 10 * SC;
+  const PORTRAIT_CX = SW / 2 - DW / 2 + 50 * SC;
+  const TEXT_X      = SW / 2 - DW / 2 + 100 * SC;
+
+  const dlgBorder = k.add([k.rect(DW + 4 * SC, DH + 4 * SC, { radius: 12 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(255, 105, 180), k.opacity(0.92), k.z(29), k.fixed()]);
+  const dlgBg     = k.add([k.rect(DW, DH, { radius: 10 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(18, 4, 32), k.opacity(0.92), k.z(30), k.fixed()]);
+  const prtBorder = k.add([k.rect(84 * SC, 84 * SC, { radius: 4 * SC }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.color(255, 105, 180), k.z(31), k.fixed()]);
+  const prtFill   = k.add([k.rect(80 * SC, 80 * SC, { radius: 3 * SC }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.color(30, 8, 48), k.z(32), k.fixed()]);
+  const pScaleV   = (80 * SC * 0.7) / 16;
+  const pScaleG   = (80 * SC * 0.20) / 16;
+  const prtVivi   = k.add([k.sprite("vivi", { frame: 0 }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.scale(pScaleV), k.z(33), k.fixed()]);
+  const prtGigi   = k.add([k.sprite("gigi", { frame: 0 }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.scale(pScaleG), k.z(33), k.fixed()]);
+  const dlgName   = k.add([k.text("", { size: fs(8), font: "pressstart2p" }), k.pos(TEXT_X, DY - DH / 2 + 14 * SC), k.color(255, 105, 180), k.z(34), k.fixed()]);
+  const dlgText   = k.add([k.text("", { size: fs(7), font: "pressstart2p", width: DW - 110 * SC, align: "left" }), k.pos(TEXT_X, DY - DH / 2 + 30 * SC), k.color(255, 245, 255), k.z(34), k.fixed()]);
+  const dlgArrow  = k.add([k.text("▼", { size: fs(8), font: "pressstart2p" }), k.pos(SW / 2 + DW / 2 - 16 * SC, DY + DH / 2 - 14 * SC), k.color(255, 255, 255), k.opacity(0), k.z(34), k.fixed()]);
+
+  const dlgAll = [dlgBorder, dlgBg, prtBorder, prtFill, prtVivi, prtGigi, dlgName, dlgText, dlgArrow];
+  function setDlgVis(v) { dlgAll.forEach(o => { o.hidden = !v; }); dialogActive = v; }
+  setDlgVis(false);
+
+  // linhas de diálogo
+  const dialogs = [
+    { speaker: "vivi", name: "Vivi",     text: "Mooor, te amo deixa eu te beijar" },
+    { speaker: "gigi", name: "Giovanna", text: "Sai pra lá zezinho" },
+    { speaker: "vivi", name: "Vivi",     text: "vem cá por favor" },
+    { speaker: "gigi", name: "Giovanna", text: "saaaiii" },
+    { speaker: "vivi", name: "Vivi",     text: "eu vou te pegar e te encher de beijos hahaha" },
+    { speaker: "gigi", name: "Giovanna", text: "chega perto de mim pra você ver." },
+    { speaker: "gigi", name: "Giovanna", text: "saaaiiiiiiiii" },
+  ];
+
+  function typeText(fullText) {
+    currentFullText = fullText; currentCharIdx = 0; typingDone = false;
+    arrowVisible = false; arrowTimer = 0; dlgArrow.opacity = 0; dlgText.text = "";
+    function step() {
+      if (currentCharIdx >= fullText.length) { typingDone = true; arrowVisible = true; return; }
+      dlgText.text = fullText.slice(0, currentCharIdx + 1);
+      playTyping(); currentCharIdx++;
+      typingHandle = k.wait(0.03, step);
+    }
+    step();
+  }
+
+  function showDlg(i) {
+    const d = dialogs[i];
+    setDlgVis(true);
+    dlgName.text   = d.name;
+    prtVivi.hidden = d.speaker !== "vivi";
+    prtGigi.hidden = d.speaker !== "gigi";
+    typeText(d.text);
+  }
+
+  function advanceDlg() {
+    if (!dialogActive) return;
+    if (!typingDone) {
+      if (typingHandle) { typingHandle.cancel(); typingHandle = null; }
+      dlgText.text = currentFullText; typingDone = true; arrowVisible = true;
+      return;
+    }
+    arrowVisible = false; arrowTimer = 0; dlgArrow.opacity = 0;
+    dialogIndex++;
+    if (dialogIndex >= dialogs.length) {
+      setDlgVis(false);
+      const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(70), k.fixed()]);
+      k.tween(0, 1, 0.8, v => { fade.opacity = v; }).onEnd(() => { k.go("minigame_beijo"); });
+    } else {
+      showDlg(dialogIndex);
+    }
+  }
+
+  k.onUpdate(() => {
+    if (!arrowVisible) return;
+    arrowTimer += k.dt();
+    dlgArrow.opacity = Math.sin(arrowTimer * 6) > 0 ? 1 : 0;
+  });
+
+  k.onKeyPress("space",  advanceDlg);
+  k.onKeyPress("return", advanceDlg);
+  k.onClick(advanceDlg);
+  k.onKeyPress("escape", () => k.go("menu"));
+
+  k.wait(1.1, () => showDlg(0));
+});
+
+// ── Cena: MINIGAME DO BEIJO ──────────────────────────────────────────────
+k.scene("minigame_beijo", () => {
+
+  // ── Constantes ───────────────────────────────────────────────────────────
+  const TILE = 16, TSCALE = 2, TSIZE = TILE * TSCALE;
+  const SPEED       = 180 * SC;
+  const MARGIN      = 20 * SC;
+  const SWING_RANGE = 55 * SC;
+  const SWING_DUR   = 0.15;
+  const SWING_CD    = 0.4;
+  const KISS_DIST   = 22 * SC;
+
+  // ── Estado ───────────────────────────────────────────────────────────────
+  let paused = false, destroyPause = null, gameEnded = false;
+  let inputBlocked = true;
+  let beijos = 0;
+  let waveNum = 0;
+  let waveEnemies = [];
+  let waveSpawnDone = false;
+  let bossHp = 3;
+  let swingActive = false, swingCooldown = 0, swingTimer = 0;
+  let lastFace = "down";
+  let currentAnim = "idle-down";
+  let dlgIdx = 0, dlgDone = false, dlgHandle = null, dlgFull = "";
+  let dlgArrowTimer = 0, dlgArrowVis = false;
+
+  // ── Áudio ────────────────────────────────────────────────────────────────
+  let actx = null;
+  function ctxA() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    return actx;
+  }
+  function beepSnd(freq, type, dur, vol, freqEnd) {
+    try {
+      const c = ctxA(), o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type; o.frequency.value = freq;
+      if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, c.currentTime + dur);
+      g.gain.setValueAtTime(vol * getEffectsVolume(), c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.start(); o.stop(c.currentTime + dur);
+    } catch (e) {}
+  }
+  function playKiss()    { beepSnd(150, "sine",   0.30, 0.18); }
+  function playHit()     { beepSnd(400, "square", 0.15, 0.20, 200); }
+  function playDefeated(){ beepSnd(200, "sine",   0.25, 0.15, 600); }
+  function playVictory() {
+    try {
+      const c = ctxA();
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const t = c.currentTime + i * 0.13;
+        const o = c.createOscillator(), g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.20 * getEffectsVolume(), t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        o.start(t); o.stop(t + 0.25);
+      });
+    } catch (e) {}
+  }
+  function playBossDefeat() {
+    try {
+      const c = ctxA();
+      [392, 523, 659, 784].forEach((f, i) => {
+        const t = c.currentTime + i * 0.12;
+        const o = c.createOscillator(), g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.25 * getEffectsVolume(), t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        o.start(t); o.stop(t + 0.3);
+      });
+    } catch (e) {}
+  }
+
+  // ── Fundo de tiles ───────────────────────────────────────────────────────
+  const COLS = Math.ceil(SW / TSIZE) + 1;
+  const ROWS = Math.ceil(SH / TSIZE) + 1;
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      k.add([k.sprite(Math.random() < 0.08 ? "flower" : "grass"), k.pos(col * TSIZE, row * TSIZE), k.scale(TSCALE), k.z(0)]);
+    }
+  }
+
+  // ── Gigi (jogador) ───────────────────────────────────────────────────────
+  const gigi = k.add([k.sprite("gigi"), k.pos(SW / 2, SH / 2), k.anchor("center"), k.scale(2.2), k.z(5)]);
+  gigi.play("idle-down");
+
+  function setGigiAnim(name) {
+    if (currentAnim === name) return;
+    currentAnim = name;
+    gigi.play(name);
+  }
+
+  // ── Taco de beisebol ─────────────────────────────────────────────────────
+  const bat = k.add([k.rect(6 * SC, 30 * SC), k.pos(SW / 2, SH / 2), k.anchor("center"), k.color(139, 90, 43), k.scale(1), k.rotate(0), k.z(4)]);
+
+  // ── Joystick virtual ─────────────────────────────────────────────────────
+  const joystick = controlMode === "joystick"
+    ? makeVirtualJoystick(() => inputBlocked || paused)
+    : null;
+
+  // ── HUD ──────────────────────────────────────────────────────────────────
+  const hudKissSh = k.add([k.text("\u{1F48B} 0/5", { size: fs(9), font: "pressstart2p" }), k.pos(11 * SC, 11 * SC), k.color(0, 0, 0), k.opacity(0.6), k.z(20), k.fixed()]);
+  const hudKiss   = k.add([k.text("\u{1F48B} 0/5", { size: fs(9), font: "pressstart2p" }), k.pos( 9 * SC,  9 * SC), k.color(255, 150, 200), k.z(21), k.fixed()]);
+  const hudOndaSh = k.add([k.text("Onda: 1/3", { size: fs(9), font: "pressstart2p" }), k.pos(SW - 11 * SC, 11 * SC), k.anchor("right"), k.color(0, 0, 0), k.opacity(0.6), k.z(20), k.fixed()]);
+  const hudOnda   = k.add([k.text("Onda: 1/3", { size: fs(9), font: "pressstart2p" }), k.pos(SW -  9 * SC,  9 * SC), k.anchor("right"), k.color(255, 240, 100), k.z(21), k.fixed()]);
+  const bossHpLbl = k.add([k.text("Vida: ❤❤❤", { size: fs(9), font: "pressstart2p", align: "center" }), k.pos(SW / 2, 10 * SC), k.anchor("top"), k.color(255, 100, 120), k.z(21), k.fixed()]);
+  bossHpLbl.hidden = true;
+
+  function updateHUD() {
+    const wl = Math.min(waveNum + 1, 3);
+    hudKiss.text = hudKissSh.text = `\u{1F48B} ${beijos}/5`;
+    hudOnda.text = hudOndaSh.text = `Onda: ${wl}/3`;
+  }
+  function updateBossHud() {
+    bossHpLbl.text = "Vida: " + "❤".repeat(bossHp) + "⬛".repeat(3 - bossHp);
+  }
+
+  // ── Diálogo pós-vitória ──────────────────────────────────────────────────
+  const DW = 400 * SC, DH = 80 * SC, DY = SH - DH / 2 - 10 * SC;
+  const dlgBorder = k.add([k.rect(DW + 4 * SC, DH + 4 * SC, { radius: 10 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(255, 105, 180), k.opacity(0.92), k.z(50), k.fixed()]);
+  const dlgBg     = k.add([k.rect(DW,           DH,          { radius:  8 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(18, 4, 32),     k.opacity(0.90), k.z(51), k.fixed()]);
+  const dlgName   = k.add([k.text("", { size: fs(8), font: "pressstart2p" }),                    k.pos(SW / 2 - DW / 2 + 10 * SC, DY - DH / 2 +  8 * SC), k.color(255, 105, 180), k.z(52), k.fixed()]);
+  const dlgText   = k.add([k.text("", { size: fs(7), font: "pressstart2p", width: DW - 20 * SC }), k.pos(SW / 2 - DW / 2 + 10 * SC, DY - DH / 2 + 24 * SC), k.color(255, 245, 255), k.z(52), k.fixed()]);
+  const dlgArrow  = k.add([k.text("▼", { size: fs(7), font: "pressstart2p" }),              k.pos(SW / 2 + DW / 2 - 14 * SC, DY + DH / 2 - 12 * SC), k.color(255, 255, 255), k.opacity(0), k.z(52), k.fixed()]);
+  const dlgAll = [dlgBorder, dlgBg, dlgName, dlgText, dlgArrow];
+  function setDlgVis(v) { dlgAll.forEach(o => { o.hidden = !v; }); }
+  setDlgVis(false);
+
+  const victoryDlgs = [
+    { name: "Giovanna", text: "Chega de beijos por hoje!" },
+    { name: "Vivi",     text: "Impossivel." },
+    { name: "Giovanna", text: "*ri*" },
+  ];
+
+  function typeDlg(text) {
+    dlgFull = text; dlgText.text = ""; dlgDone = false;
+    dlgArrowVis = false; dlgArrow.opacity = 0;
+    let i = 0;
+    function step() {
+      if (i >= text.length) { dlgDone = true; dlgArrowVis = true; return; }
+      dlgText.text = text.slice(0, i + 1);
+      beepSnd(800 + Math.random() * 400, "square", 0.03, 0.04);
+      i++;
+      dlgHandle = k.wait(0.03, step);
+    }
+    step();
+  }
+
+  function showDlg(i) {
+    dlgName.text = victoryDlgs[i].name;
+    setDlgVis(true);
+    typeDlg(victoryDlgs[i].text);
+  }
+
+  function advanceDlg() {
+    if (dlgBorder.hidden) return;
+    if (!dlgDone) {
+      if (dlgHandle) dlgHandle.cancel();
+      dlgText.text = dlgFull; dlgDone = true; dlgArrowVis = true;
+      return;
+    }
+    dlgArrowVis = false; dlgArrow.opacity = 0;
+    dlgIdx++;
+    if (dlgIdx >= victoryDlgs.length) {
+      setDlgVis(false);
+      const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(80), k.fixed()]);
+      k.tween(0, 1, 1.0, v => { fade.opacity = v; }).onEnd(() => {
+        k.go("final");
+      });
+    } else {
+      showDlg(dlgIdx);
+    }
+  }
+
+  // ── Sistema de inimigos ──────────────────────────────────────────────────
+  function spawnEnemy(speed, scale, isBoss) {
+    const side = Math.floor(Math.random() * 4);
+    let sx, sy;
+    if      (side === 0) { sx = k.rand(30 * SC, SW - 30 * SC); sy = -30 * SC; }
+    else if (side === 1) { sx = k.rand(30 * SC, SW - 30 * SC); sy = SH + 30 * SC; }
+    else if (side === 2) { sx = -30 * SC;      sy = k.rand(30 * SC, SH - 30 * SC); }
+    else                 { sx = SW + 30 * SC;  sy = k.rand(30 * SC, SH - 30 * SC); }
+
+    const hCount = isBoss ? 3 : 1;
+    const heartObjs = [];
+    for (let h = 0; h < hCount; h++) {
+      heartObjs.push(k.add([
+        k.text("💗", { size: fs(isBoss ? 10 : 8) }),
+        k.pos(sx, sy - 30 * SC), k.anchor("center"), k.scale(1), k.z(7),
+      ]));
+    }
+
+    const enemy = k.add([
+      k.sprite("vivi"), k.pos(sx, sy), k.anchor("center"), k.scale(scale), k.z(5),
+      { spd: speed, hp: isBoss ? 3 : 1, isBoss, heartObjs, dying: false, kissInvul: 0 },
+    ]);
+    enemy.play("idle-down");
+
+    enemy.onUpdate(() => {
+      if (enemy.dying || gameEnded || !enemy.exists()) return;
+      const ex = enemy.pos.x, ey = enemy.pos.y;
+      const n = enemy.heartObjs.length;
+      enemy.heartObjs.forEach((h, i) => {
+        if (h.exists()) {
+          h.pos.x = ex + (i - (n - 1) / 2) * 18 * SC;
+          h.pos.y = ey - (isBoss ? 42 : 28) * SC;
+        }
+      });
+
+      if (enemy.kissInvul > 0) {
+        enemy.kissInvul -= k.dt();
+        enemy.opacity = Math.sin(k.time() * 20) > 0 ? 1 : 0.3;
+        return;
+      }
+      enemy.opacity = 1;
+
+      const dx = gigi.pos.x - ex, dy = gigi.pos.y - ey;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 0) {
+        enemy.pos.x += (dx / dist) * enemy.spd * k.dt();
+        enemy.pos.y += (dy / dist) * enemy.spd * k.dt();
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          enemy.play(dx > 0 ? "walk-right" : "walk-left");
+        } else {
+          enemy.play(dy > 0 ? "walk-down" : "walk-up");
+        }
+      }
+
+      if (dist < KISS_DIST) receiveKiss(enemy);
+    });
+
+    return enemy;
+  }
+
+  function receiveKiss(enemy) {
+    if (gameEnded || !enemy.exists() || enemy.kissInvul > 0) return;
+    enemy.kissInvul = 1.2;
+    beijos++;
+    updateHUD();
+    playKiss();
+
+    const dx = enemy.pos.x - gigi.pos.x, dy = enemy.pos.y - gigi.pos.y;
+    const d  = Math.hypot(dx, dy) || 1;
+    k.tween(enemy.pos.x, Math.max(30 * SC, Math.min(SW - 30 * SC, enemy.pos.x + (dx / d) * 100 * SC)), 0.3, v => { if (enemy.exists()) enemy.pos.x = v; });
+    k.tween(enemy.pos.y, Math.max(30 * SC, Math.min(SH - 30 * SC, enemy.pos.y + (dy / d) * 100 * SC)), 0.3, v => { if (enemy.exists()) enemy.pos.y = v; });
+
+    const fl = k.add([k.text("💋", { size: fs(14) }), k.pos(gigi.pos.x, gigi.pos.y - 20 * SC), k.anchor("center"), k.z(10), k.fixed()]);
+    k.tween(1, 0, 0.5, v => { if (fl.exists()) fl.opacity = v; });
+    k.wait(0.5, () => { if (fl.exists()) fl.destroy(); });
+
+    if (beijos >= 5) triggerDefeat();
+  }
+
+  function hitEnemy(enemy) {
+    if (!enemy.exists() || enemy.dying || enemy.kissInvul > 0) return;
+    playHit();
+
+    if (enemy.isBoss) {
+      enemy.hp--;
+      bossHp = enemy.hp;
+      updateBossHud();
+      const h = enemy.heartObjs.pop();
+      if (h && h.exists()) {
+        k.tween(1, 0, 0.2, v => { if (h.exists()) h.opacity = v; });
+        k.wait(0.2, () => { if (h.exists()) h.destroy(); });
+      }
+      if (enemy.hp <= 0) {
+        eliminateEnemy(enemy, true);
+      } else {
+        enemy.kissInvul = 0.5;
+        const dx = enemy.pos.x - gigi.pos.x, dy = enemy.pos.y - gigi.pos.y;
+        const d = Math.hypot(dx, dy) || 1;
+        k.tween(enemy.pos.x, enemy.pos.x + (dx / d) * 80 * SC, 0.2, v => { if (enemy.exists()) enemy.pos.x = v; });
+        k.tween(enemy.pos.y, enemy.pos.y + (dy / d) * 80 * SC, 0.2, v => { if (enemy.exists()) enemy.pos.y = v; });
+      }
+    } else {
+      eliminateEnemy(enemy, false);
+    }
+  }
+
+  function eliminateEnemy(enemy, isBoss) {
+    if (!enemy.exists() || enemy.dying) return;
+    enemy.dying = true;
+    enemy.heartObjs.forEach(h => { if (h.exists()) h.destroy(); });
+    enemy.heartObjs = [];
+
+    for (let i = 0; i < 5; i++) {
+      const ang0 = (i / 5) * Math.PI * 2;
+      const ex0 = enemy.pos.x, ey0 = enemy.pos.y;
+      const s = k.add([
+        k.text("★", { size: fs(8) }), k.pos(ex0, ey0),
+        k.anchor("center"), k.color(255, 220, 50), k.scale(1), k.z(9),
+        { ang: ang0, r: 0, ex: ex0, ey: ey0 },
+      ]);
+      s.onUpdate(() => { s.ang += 4 * k.dt(); s.r = Math.min(s.r + 100 * SC * k.dt(), 40 * SC); s.pos.x = s.ex + Math.cos(s.ang) * s.r; s.pos.y = s.ey + Math.sin(s.ang) * s.r; });
+      k.tween(1, 0, 0.4, v => { if (s.exists()) s.opacity = v; });
+      k.wait(0.4, () => { if (s.exists()) s.destroy(); });
+    }
+
+    if (isBoss) {
+      playBossDefeat();
+      bossHpLbl.hidden = true;
+      for (let i = 0; i < 10; i++) {
+        const ang = (i / 10) * Math.PI * 2;
+        const spd = k.rand(80, 160) * SC;
+        const hh = k.add([
+          k.text("💗", { size: fs(10) }), k.pos(enemy.pos.x, enemy.pos.y),
+          k.anchor("center"), k.scale(1), k.z(8),
+          { vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd },
+        ]);
+        hh.onUpdate(() => { hh.pos.x += hh.vx * k.dt(); hh.pos.y += hh.vy * k.dt(); });
+        k.tween(1, 0, 0.6, v => { if (hh.exists()) hh.opacity = v; });
+        k.wait(0.6, () => { if (hh.exists()) hh.destroy(); });
+      }
+    } else {
+      playDefeated();
+    }
+
+    const tx = enemy.pos.x < SW / 2 ? -60 * SC : SW + 60 * SC;
+    const ty = enemy.pos.y < SH / 2 ? -60 * SC : SH + 60 * SC;
+    k.tween(enemy.pos.x, tx, 0.3, v => { if (enemy.exists()) enemy.pos.x = v; });
+    k.tween(enemy.pos.y, ty, 0.3, v => { if (enemy.exists()) enemy.pos.y = v; });
+    k.wait(0.32, () => {
+      if (enemy.exists()) enemy.destroy();
+      waveEnemies = waveEnemies.filter(e => e !== enemy);
+      k.wait(0.05, checkWaveDone);
+    });
+  }
+
+  function checkWaveDone() {
+    if (gameEnded || !waveSpawnDone) return;
+    const alive = waveEnemies.filter(e => e.exists() && !e.dying);
+    if (alive.length === 0) {
+      waveEnemies = [];
+      if (waveNum >= 2) {
+        triggerVictory();
+      } else {
+        waveNum++;
+        updateHUD();
+        k.wait(0.5, () => showWaveBanner(waveNum + 1, () => startWave(waveNum)));
+      }
+    }
+  }
+
+  // ── Ondas ────────────────────────────────────────────────────────────────
+  function startWave(wn) {
+    waveSpawnDone = false;
+    const cfgs = [
+      { count: 3, speed: 70  * SC, scale: 8, interval: 1.5, boss: false },
+      { count: 5, speed: 100 * SC, scale: 8, interval: 1.0, boss: false },
+      { count: 1, speed: 55  * SC, scale: 12, interval: 0,   boss: true  },
+    ];
+    const cfg = cfgs[wn];
+    if (cfg.boss) { bossHpLbl.hidden = false; bossHp = 3; updateBossHud(); }
+
+    let spawned = 0;
+    function doSpawn() {
+      if (gameEnded) return;
+      const e = spawnEnemy(cfg.speed, cfg.scale, cfg.boss);
+      waveEnemies.push(e);
+      spawned++;
+      if (spawned < cfg.count) {
+        k.wait(cfg.interval, doSpawn);
+      } else {
+        waveSpawnDone = true;
+        k.wait(0.1, checkWaveDone);
+      }
+    }
+    doSpawn();
+  }
+
+  function showWaveBanner(num, onDone) {
+    inputBlocked = true;
+    const tx  = `Onda ${num}!`;
+    const sh  = k.add([k.text(tx, { size: fs(16), font: "pressstart2p", align: "center" }), k.pos(SW / 2 + 2 * SC, SH / 2 + 2 * SC), k.anchor("center"), k.scale(0), k.color(0, 0, 0), k.z(30), k.fixed()]);
+    const lbl = k.add([k.text(tx, { size: fs(16), font: "pressstart2p", align: "center" }), k.pos(SW / 2,           SH / 2),           k.anchor("center"), k.scale(0), k.color(255, 220, 50), k.z(31), k.fixed()]);
+    k.tween(0, 1.1, 0.2, v => { lbl.scale.x = v; lbl.scale.y = v; sh.scale.x = v; sh.scale.y = v; });
+    k.wait(0.22, () => k.tween(1.1, 1.0, 0.1, v => { lbl.scale.x = v; lbl.scale.y = v; sh.scale.x = v; sh.scale.y = v; }));
+    k.wait(2.0, () => {
+      k.tween(1, 0, 0.2, v => { lbl.opacity = v; sh.opacity = v; });
+      k.wait(0.22, () => {
+        if (lbl.exists()) lbl.destroy();
+        if (sh.exists())  sh.destroy();
+        inputBlocked = false;
+        if (onDone) onDone();
+      });
+    });
+  }
+
+  // ── Vitória / Derrota ─────────────────────────────────────────────────────
+  function triggerDefeat() {
+    if (gameEnded) return;
+    gameEnded = true; inputBlocked = true;
+    const lbl = k.add([k.text("Vivi ganhou hoje... 💋", { size: fs(9), font: "pressstart2p", align: "center", width: SW * 0.7 }), k.pos(SW / 2, SH / 2), k.anchor("center"), k.color(255, 100, 150), k.z(40), k.fixed()]);
+    k.wait(1.5, () => { if (lbl.exists()) lbl.destroy(); k.go("minigame_beijo"); });
+  }
+
+  function triggerVictory() {
+    if (gameEnded) return;
+    gameEnded = true; inputBlocked = true;
+    playVictory();
+
+    const vsh = k.add([k.text("Gigi venceu! 🏆", { size: fs(11), font: "pressstart2p", align: "center", width: SW * 0.8 }), k.pos(SW / 2 + 2 * SC, SH / 2 - 18 * SC), k.anchor("center"), k.scale(0), k.color(0, 0, 0), k.z(39), k.fixed()]);
+    const vlb = k.add([k.text("Gigi venceu! 🏆", { size: fs(11), font: "pressstart2p", align: "center", width: SW * 0.8 }), k.pos(SW / 2,           SH / 2 - 20 * SC), k.anchor("center"), k.scale(0), k.color(255, 220, 50), k.z(40), k.fixed()]);
+    k.tween(0, 1.1, 0.25, v => { vlb.scale.x = v; vlb.scale.y = v; vsh.scale.x = v; vsh.scale.y = v; });
+    k.wait(0.27, () => k.tween(1.1, 1.0, 0.12, v => { vlb.scale.x = v; vlb.scale.y = v; vsh.scale.x = v; vsh.scale.y = v; }));
+
+    for (let i = 0; i < 12; i++) {
+      k.wait(i * 0.12, () => {
+        if (gameEnded) {
+          const vy = -k.rand(40, 90) * SC;
+          const hh = k.add([k.text("💗", { size: fs(k.rand(8, 14)) }), k.pos(k.rand(0, SW), k.rand(0, SH)), k.anchor("center"), k.scale(1), k.z(25), k.fixed(), { vy }]);
+          hh.onUpdate(() => { hh.pos.y += hh.vy * k.dt(); });
+          k.tween(1, 0, 1.0, v => { if (hh.exists()) hh.opacity = v; });
+          k.wait(1.0, () => { if (hh.exists()) hh.destroy(); });
+        }
+      });
+    }
+
+    k.wait(1.2, () => { dlgIdx = 0; showDlg(0); });
+  }
+
+  // ── Swing do taco ────────────────────────────────────────────────────────
+  function doSwing() {
+    if (inputBlocked || paused || swingActive || swingCooldown > 0 || gameEnded) return;
+    swingActive = true; swingTimer = 0;
+
+    k.wait(SWING_DUR * 0.5, () => {
+      if (gameEnded) return;
+      const dirs = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+      const [dx, dy] = dirs[lastFace] || [0, 1];
+      const cx = gigi.pos.x + dx * SWING_RANGE * 0.6;
+      const cy = gigi.pos.y + dy * SWING_RANGE * 0.6;
+      waveEnemies.forEach(e => {
+        if (!e.exists() || e.dying || e.kissInvul > 0) return;
+        if (Math.hypot(e.pos.x - cx, e.pos.y - cy) < SWING_RANGE) hitEnemy(e);
+      });
+    });
+
+    k.wait(SWING_DUR, () => { swingActive = false; swingTimer = 0; swingCooldown = SWING_CD; });
+  }
+
+  // ── Controles ────────────────────────────────────────────────────────────
+  k.onKeyDown("left",  () => { if (inputBlocked || paused) return; gigi.move(-SPEED, 0); setGigiAnim("walk-left");  lastFace = "left";  });
+  k.onKeyDown("right", () => { if (inputBlocked || paused) return; gigi.move( SPEED, 0); setGigiAnim("walk-right"); lastFace = "right"; });
+  k.onKeyDown("up",    () => { if (inputBlocked || paused) return; gigi.move(0, -SPEED); setGigiAnim("walk-up");    lastFace = "up";    });
+  k.onKeyDown("down",  () => { if (inputBlocked || paused) return; gigi.move(0,  SPEED); setGigiAnim("walk-down");  lastFace = "down";  });
+  k.onKeyDown("a",     () => { if (inputBlocked || paused) return; gigi.move(-SPEED, 0); setGigiAnim("walk-left");  lastFace = "left";  });
+  k.onKeyDown("d",     () => { if (inputBlocked || paused) return; gigi.move( SPEED, 0); setGigiAnim("walk-right"); lastFace = "right"; });
+  k.onKeyDown("w",     () => { if (inputBlocked || paused) return; gigi.move(0, -SPEED); setGigiAnim("walk-up");    lastFace = "up";    });
+  k.onKeyDown("s",     () => { if (inputBlocked || paused) return; gigi.move(0,  SPEED); setGigiAnim("walk-down");  lastFace = "down";  });
+
+  k.onKeyRelease(() => {
+    const any = k.isKeyDown("left") || k.isKeyDown("right") || k.isKeyDown("up")   || k.isKeyDown("down") ||
+                k.isKeyDown("a")    || k.isKeyDown("d")     || k.isKeyDown("w")     || k.isKeyDown("s");
+    if (!any && !inputBlocked) setGigiAnim("idle-" + lastFace);
+  });
+
+  k.onKeyPress("space",  () => { if (!dlgBorder.hidden) { advanceDlg(); return; } doSwing(); });
+  k.onKeyPress("return", () => { if (!dlgBorder.hidden) { advanceDlg(); return; } });
+  k.onMousePress("left", () => { if (!dlgBorder.hidden) { advanceDlg(); return; } doSwing(); });
+
+  k.onKeyPress("escape", () => {
+    if (gameEnded) return;
+    if (paused) { if (destroyPause) { destroyPause(); destroyPause = null; } paused = false; }
+    else        { paused = true; destroyPause = makePauseOverlay(() => { paused = false; destroyPause = null; }); }
+  });
+
+  // ── Loop principal ───────────────────────────────────────────────────────
+  k.onUpdate(() => {
+    if (paused || gameEnded) return;
+
+    gigi.pos.x = Math.max(MARGIN, Math.min(SW - MARGIN, gigi.pos.x));
+    gigi.pos.y = Math.max(MARGIN, Math.min(SH - MARGIN, gigi.pos.y));
+
+    if (!inputBlocked) {
+      const any = k.isKeyDown("left") || k.isKeyDown("right") || k.isKeyDown("up")   || k.isKeyDown("down") ||
+                  k.isKeyDown("a")    || k.isKeyDown("d")     || k.isKeyDown("w")     || k.isKeyDown("s");
+      if (joystick) {
+        joystick.tick();
+        if (joystick.isActive()) {
+          const { x: jx, y: jy } = joystick.getDir();
+          if (Math.abs(jx) > 0.15 || Math.abs(jy) > 0.15) {
+            gigi.move(jx * SPEED, jy * SPEED);
+            if (Math.abs(jx) >= Math.abs(jy)) { setGigiAnim(jx > 0 ? "walk-right" : "walk-left"); lastFace = jx > 0 ? "right" : "left"; }
+            else                               { setGigiAnim(jy > 0 ? "walk-down"  : "walk-up");   lastFace = jy > 0 ? "down"  : "up";   }
+          } else if (!any) { setGigiAnim("idle-" + lastFace); }
+        } else if (!any) { setGigiAnim("idle-" + lastFace); }
+      } else if (!any) { setGigiAnim("idle-" + lastFace); }
+    }
+
+    if (swingCooldown > 0) swingCooldown -= k.dt();
+    if (swingActive) swingTimer = Math.min(swingTimer + k.dt(), SWING_DUR);
+
+    const faceAngles = { right: -90, down: 0, left: 90, up: 180 };
+    const foff       = { right: [18 * SC, 0], left: [-18 * SC, 0], up: [0, -18 * SC], down: [0, 18 * SC] };
+    const [fox, foy] = foff[lastFace] || [0, 18 * SC];
+    bat.pos.x = gigi.pos.x + fox;
+    bat.pos.y = gigi.pos.y + foy;
+    bat.angle = (faceAngles[lastFace] || 0) + (swingActive ? (swingTimer / SWING_DUR) * 90 - 30 : 0);
+
+    if (dlgArrowVis) {
+      dlgArrowTimer += k.dt();
+      dlgArrow.opacity = Math.sin(dlgArrowTimer * 6) > 0 ? 1 : 0;
+    }
+  });
+
+  // ── Sequência inicial ────────────────────────────────────────────────────
+  const tsh = k.add([k.text("A Batalha", { size: fs(14), font: "pressstart2p", align: "center" }), k.pos(SW / 2 + 2 * SC, SH / 2 + 2 * SC), k.anchor("center"), k.scale(0), k.color(0, 0, 0),     k.z(40), k.fixed()]);
+  const tlb = k.add([k.text("A Batalha", { size: fs(14), font: "pressstart2p", align: "center" }), k.pos(SW / 2,           SH / 2),           k.anchor("center"), k.scale(0), k.color(255, 220, 50), k.z(41), k.fixed()]);
+  k.tween(0, 1.1, 0.25, v => { tlb.scale.x = v; tlb.scale.y = v; tsh.scale.x = v; tsh.scale.y = v; });
+  k.wait(0.27, () => k.tween(1.1, 1.0, 0.12, v => { tlb.scale.x = v; tlb.scale.y = v; tsh.scale.x = v; tsh.scale.y = v; }));
+  k.wait(2.2, () => {
+    k.tween(1, 0, 0.3, v => { tlb.opacity = v; tsh.opacity = v; });
+    k.wait(0.35, () => {
+      if (tlb.exists()) tlb.destroy();
+      if (tsh.exists()) tsh.destroy();
+      showWaveBanner(1, () => startWave(0));
+    });
+  });
+});
+
 // ── Cena: CONFIGURAÇÕES ──────────────────────────────────────────────────
 k.scene("configuracoes", () => {
   // Mesmo fundo do menu
@@ -4232,6 +5245,267 @@ k.scene("configuracoes", () => {
   voltarBtn.onHover(() => { voltarBtn.color = k.rgb(255,75,130); document.body.style.cursor = "pointer"; });
   voltarBtn.onHoverEnd(() => { voltarBtn.color = k.rgb(250,115,162); document.body.style.cursor = "default"; });
   voltarBtn.onClick(() => { document.body.style.cursor = "default"; k.go("menu"); });
+});
+
+// ── Cena: FINAL ──────────────────────────────────────────────────────────────
+k.scene("final", () => {
+
+  // ── Música (until_i_found_you.mp3) ───────────────────────────────────────
+  let musicCtx = null, musicGain = null, musicSource = null, sceneGone = false;
+  (function initMusic() {
+    try {
+      musicCtx = new (window.AudioContext || window.webkitAudioContext)();
+      musicGain = musicCtx.createGain();
+      musicGain.gain.value = volumeGeral * volumeMusica * 0.7;
+      musicGain.connect(musicCtx.destination);
+      fetch("/audio/until_i_found_you.mp3")
+        .then(r => r.arrayBuffer())
+        .then(b => musicCtx.decodeAudioData(b))
+        .then(decoded => {
+          if (sceneGone) return;
+          musicSource = musicCtx.createBufferSource();
+          musicSource.buffer = decoded;
+          musicSource.loop = true;
+          musicSource.connect(musicGain);
+          musicSource.start();
+        }).catch(() => {});
+    } catch (e) {}
+  })();
+
+  function stopMusic(fadeDur) {
+    sceneGone = true;
+    if (!musicGain || !musicCtx) return;
+    try {
+      if (fadeDur > 0) {
+        musicGain.gain.linearRampToValueAtTime(0, musicCtx.currentTime + fadeDur);
+        k.wait(fadeDur + 0.1, () => { try { if (musicSource) musicSource.stop(); } catch (e) {} });
+      } else {
+        musicGain.gain.value = 0;
+        try { if (musicSource) musicSource.stop(); } catch (e) {}
+      }
+    } catch (e) {}
+  }
+
+  // ── Fundo preto (momentos 1 e 2) ─────────────────────────────────────────
+  const blackBg = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.z(0), k.fixed()]);
+
+  // ── Partículas 💛 em loop (momentos 1 e 2) ───────────────────────────────
+  const hParts = [];
+  for (let i = 0; i < 9; i++) {
+    const h = k.add([
+      k.text("❤️", { size: fs(Math.round(k.rand(7, 13))) }),
+      k.pos(k.rand(0, SW), SH + k.rand(0, SH * 0.6)),
+      k.anchor("center"), k.opacity(k.rand(0.25, 0.65)), k.z(1), k.fixed(),
+      { vy: -(k.rand(20, 45) * SC) },
+    ]);
+    hParts.push(h);
+  }
+  let heartsActive = true;
+  k.onUpdate(() => {
+    if (!heartsActive) return;
+    hParts.forEach(h => {
+      if (!h.exists()) return;
+      h.pos.y += h.vy * k.dt();
+      if (h.pos.y < -20 * SC) { h.pos.y = SH + k.rand(0, 50) * SC; h.pos.x = k.rand(0, SW); }
+    });
+  });
+
+  // elementos do momento 2 para destruir na transição
+  const m2Els = [];
+
+  // ── Polaroid ─────────────────────────────────────────────────────────────
+  function makePolaroid(cfg, onDone) {
+    const CX = SW / 2, CY = SH / 2;
+    const FW = 220 * SC, FH = 240 * SC;
+    const phW = 190 * SC, phH = 170 * SC;
+    const phY = CY - 22 * SC;
+    const capY = CY + 92 * SC;
+
+    const shad  = k.add([k.rect(FW + 6*SC, FH + 6*SC), k.pos(CX + 6*SC, CY + 6*SC), k.anchor("center"), k.color(0, 0, 0), k.opacity(0), k.rotate(cfg.angle), k.scale(0), k.z(10), k.fixed()]);
+    const frame = k.add([k.rect(FW, FH),                k.pos(CX, CY),               k.anchor("center"), k.color(248, 246, 242), k.opacity(0), k.rotate(cfg.angle), k.scale(0), k.z(11), k.fixed()]);
+    const phBg  = k.add([k.rect(phW, phH),              k.pos(CX, phY),              k.anchor("center"), k.color(...cfg.bgColor), k.opacity(0), k.z(12), k.fixed()]);
+    const viEl  = k.add([k.sprite("vivi"), k.pos(CX + cfg.vx * SC, phY + cfg.vy * SC), k.anchor("center"), k.scale(4 * SC), k.opacity(0), k.z(13), k.fixed()]);
+    viEl.play("idle-right");
+    const giEl  = k.add([k.sprite("gigi"), k.pos(CX + cfg.gx * SC, phY + cfg.gy * SC), k.anchor("center"), k.scale(1.1 * SC), k.opacity(0), k.z(13), k.fixed()]);
+    giEl.play("idle-left");
+    const cap   = k.add([k.text(cfg.caption, { size: fs(6), font: "pressstart2p", align: "center", width: FW - 14*SC }), k.pos(CX, capY), k.anchor("center"), k.color(80, 80, 80), k.opacity(0), k.z(14), k.fixed()]);
+
+    let detEl = null;
+    if (cfg.detail) {
+      detEl = k.add([k.text(cfg.detail.t, { size: fs(cfg.detail.fs) }), k.pos(CX + cfg.detail.x * SC, phY + cfg.detail.y * SC), k.anchor("center"), k.opacity(0), k.z(14), k.fixed()]);
+    }
+
+    function setOp(v) {
+      if (frame.exists()) frame.opacity = v;
+      if (shad.exists())  shad.opacity  = v * 0.28;
+      [phBg, viEl, giEl, cap].forEach(e => { if (e.exists()) e.opacity = v; });
+      if (detEl && detEl.exists()) detEl.opacity = v;
+    }
+    function scaleFrames(v) {
+      [shad, frame].forEach(e => { if (e.exists()) { e.scale.x = v; e.scale.y = v; } });
+    }
+
+    k.tween(0, 1.05, 0.45, v => scaleFrames(v))
+      .onEnd(() => k.tween(1.05, 1.0, 0.12, v => scaleFrames(v)));
+    k.tween(0, 1, 0.5, v => setOp(v));
+
+    k.wait(4.1, () => {
+      k.tween(1, 0, 0.5, v => setOp(v)).onEnd(() => {
+        [shad, frame, phBg, viEl, giEl, cap].forEach(e => { if (e.exists()) e.destroy(); });
+        if (detEl && detEl.exists()) detEl.destroy();
+        if (onDone) onDone();
+      });
+    });
+  }
+
+  const polaroidCfgs = [
+    { angle: 3,  caption: "Missao das flores 🌸",  bgColor: [120, 185, 120], vx: -35, vy: 20, gx: 28, gy: 20, detail: { t: "🌸", fs: 13, x: 58, y: -55 } },
+    { angle: -2, caption: "Primeiro beijo 💋",      bgColor: [200, 155, 185], vx: -18, vy: 20, gx: 16, gy: 20, detail: { t: "💋", fs: 13, x:  0, y: -50 } },
+    { angle: 2,  caption: "Rampa do Cristo 🌅",     bgColor: [210, 130,  60], vx: -35, vy: 20, gx: 28, gy: 20, detail: { t: "🌅", fs: 13, x: 62, y: -52 } },
+    { angle: -3, caption: "28 de junho de 2025 💛", bgColor: [ 80, 110, 190], vx: -38, vy: 20, gx: 30, gy: 20, detail: { t: "❤️", fs: 11, x: -4, y: -50 } },
+  ];
+
+  // ── Momento 2: Mensagem do Vini ───────────────────────────────────────────
+  const MSG_LINES = [
+    "Gigi,", "", "obrigado por existir",
+    "e por fazer parte", "da minha vida.", "",
+    "esse jogo é pra voce.", "","Cada momento que vivemos juntos", " ", "são os melhores da minha vida",
+    "te amo muito. ❤️", "", "— Vivi",
+  ];
+
+  function startMoment2() {
+    const v2 = k.add([k.sprite("vivi"), k.pos(SW * 0.44, SH * 0.80), k.anchor("center"), k.scale(8.5), k.z(2), k.fixed()]);
+    v2.play("idle-right");
+    const g2 = k.add([k.sprite("gigi"), k.pos(SW * 0.56, SH * 0.80), k.anchor("center"), k.scale(2.2), k.z(2), k.fixed()]);
+    g2.play("idle-left");
+    m2Els.push(v2, g2);
+
+    let actxM = null;
+    function getCtxM() { if (!actxM) actxM = new (window.AudioContext || window.webkitAudioContext)(); return actxM; }
+    function playTyping() {
+      try {
+        const c = getCtxM(), o = c.createOscillator(), g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = "square"; o.frequency.value = 800 + Math.random() * 400;
+        g.gain.setValueAtTime(0.04 * getEffectsVolume(), c.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.04);
+        o.start(); o.stop(c.currentTime + 0.04);
+      } catch (e) {}
+    }
+
+    const LINE_H = 17 * SC;
+    const startY = SH * 0.07;
+    let lineIdx = 0;
+
+    function typeNextLine() {
+      if (lineIdx >= MSG_LINES.length) { k.wait(2.0, startMoment3); return; }
+      const text = MSG_LINES[lineIdx];
+      const y = startY + lineIdx * LINE_H;
+      lineIdx++;
+      if (!text) { k.wait(0.3, typeNextLine); return; }
+      const lbl = k.add([k.text("", { size: fs(8), font: "pressstart2p", align: "center" }), k.pos(SW / 2, y), k.anchor("center"), k.color(255, 255, 255), k.z(22), k.fixed()]);
+      m2Els.push(lbl);
+      let ci = 0;
+      function step() {
+        if (ci >= text.length) { k.wait(0.6, typeNextLine); return; }
+        lbl.text = text.slice(0, ci + 1);
+        playTyping(); ci++;
+        k.wait(0.03, step);
+      }
+      step();
+    }
+
+    typeNextLine();
+  }
+
+  // ── Momento 3: Créditos ───────────────────────────────────────────────────
+  function startMoment3() {
+    heartsActive = false;
+    stopMusic(4.5);
+
+    m2Els.forEach(e => { if (e.exists()) k.tween(e.opacity, 0, 0.7, v => { if (e.exists()) e.opacity = v; }); });
+    hParts.forEach(h => { if (h.exists()) k.tween(h.opacity, 0, 0.7, v => { if (h.exists()) h.opacity = v; }); });
+    if (blackBg.exists()) k.tween(1, 0, 0.7, v => { if (blackBg.exists()) blackBg.opacity = v; });
+
+    k.wait(0.85, () => {
+      m2Els.forEach(e => { if (e.exists()) e.destroy(); });
+      hParts.forEach(h => { if (h.exists()) h.destroy(); });
+      if (blackBg.exists()) blackBg.destroy();
+
+      // Céu pôr do sol
+      const GROUND_Y = SH * 0.68;
+      const N_BANDS = 8, bandH = GROUND_Y / N_BANDS;
+      const SKY_TOP = [60, 40, 110], SKY_BOT = [255, 150, 60];
+      for (let i = 0; i < N_BANDS; i++) {
+        const t = i / (N_BANDS - 1);
+        k.add([k.rect(SW, bandH + 2), k.pos(0, i * bandH), k.color(
+          Math.round(SKY_TOP[0] + (SKY_BOT[0] - SKY_TOP[0]) * t),
+          Math.round(SKY_TOP[1] + (SKY_BOT[1] - SKY_TOP[1]) * t),
+          Math.round(SKY_TOP[2] + (SKY_BOT[2] - SKY_TOP[2]) * t),
+        ), k.z(0), k.fixed()]);
+      }
+      k.add([k.rect(SW, SH - GROUND_Y + 4), k.pos(0, GROUND_Y), k.color(55, 120, 55), k.z(1), k.fixed()]);
+      k.add([k.circle(60 * SC), k.pos(SW * 0.70, GROUND_Y - 30*SC), k.anchor("center"), k.color(255, 200, 100), k.opacity(0.28), k.z(2), k.fixed()]);
+      k.add([k.circle(50 * SC), k.pos(SW * 0.70, GROUND_Y - 30*SC), k.anchor("center"), k.color(255, 165,  60), k.opacity(0.90), k.z(3), k.fixed()]);
+
+      // Personagens frente a frente
+      const charY = GROUND_Y - 2 * SC;
+      const v3 = k.add([k.sprite("vivi"), k.pos(SW * 0.44, charY), k.anchor("bot"), k.scale(8.5), k.z(5), k.fixed()]);
+      v3.play("idle-right");
+      const g3 = k.add([k.sprite("gigi"), k.pos(SW * 0.56, charY), k.anchor("bot"), k.scale(2.2), k.z(5), k.fixed()]);
+      g3.play("idle-left");
+      const heartF = k.add([k.text("💛", { size: fs(10) }), k.pos(SW * 0.50, charY - 52*SC), k.anchor("center"), k.z(6), k.fixed(), { hft: 0 }]);
+      heartF.onUpdate(() => { heartF.hft += k.dt(); heartF.pos.y = charY - 52*SC + Math.sin(heartF.hft * 2.5) * 8 * SC; });
+
+      // Créditos
+      const creditData = [
+        { text: "Momoris Gigica",           size: 16, color: [255, 220,  50], shad: true  },
+        { text: "feito com muito amor",     size:  8, color: [255, 255, 255], shad: false },
+        { text: "por Vini, para a Gigi 💛", size:  8, color: [255, 255, 255], shad: false },
+        { text: "28 de junho de 2025",      size:  7, color: [200, 200, 200], shad: false },
+      ];
+      const creditY = [SH * 0.10, SH * 0.26, SH * 0.36, SH * 0.46];
+      creditData.forEach((c, i) => {
+        const delay = i * 0.9;
+        if (c.shad) {
+          const sh = k.add([k.text(c.text, { size: fs(c.size), font: "pressstart2p", align: "center" }), k.pos(SW/2 + 2*SC, creditY[i] + 2*SC), k.anchor("center"), k.color(0, 0, 0), k.opacity(0), k.z(9), k.fixed()]);
+          k.wait(delay, () => k.tween(0, 0.85, 0.5, v => { if (sh.exists()) sh.opacity = v; }));
+        }
+        const lbl = k.add([k.text(c.text, { size: fs(c.size), font: "pressstart2p", align: "center" }), k.pos(SW/2, creditY[i]), k.anchor("center"), k.color(...c.color), k.opacity(0), k.z(10), k.fixed()]);
+        k.wait(delay, () => k.tween(0, 1, 0.5, v => { if (lbl.exists()) lbl.opacity = v; }));
+      });
+
+      // Prompt pisca após créditos + 3s
+      let canRestart = false, blinkT = 0;
+      const restartLbl = k.add([k.text("Toque para recomecar", { size: fs(7), font: "pressstart2p", align: "center" }), k.pos(SW/2, SH * 0.60), k.anchor("center"), k.color(180, 180, 180), k.opacity(0), k.z(10), k.fixed()]);
+      k.wait(creditData.length * 0.9 + 3.0, () => {
+        canRestart = true;
+        restartLbl.onUpdate(() => { blinkT += k.dt(); restartLbl.opacity = Math.sin(blinkT * 4) > 0 ? 1 : 0; });
+      });
+
+      function doRestart() {
+        if (!canRestart) return;
+        canRestart = false;
+        stopMusic(0);
+        const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(80), k.fixed()]);
+        k.tween(0, 1, 0.8, v => { if (fade.exists()) fade.opacity = v; }).onEnd(() => k.go("menu"));
+      }
+      k.onKeyPress("space",  doRestart);
+      k.onKeyPress("return", doRestart);
+      k.onClick(doRestart);
+    });
+  }
+
+  // ── Sequência: entrada → polaroids → mensagem → créditos ─────────────────
+  const entryFade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(1), k.z(50), k.fixed()]);
+  k.tween(1, 0, 1.0, v => { if (entryFade.exists()) entryFade.opacity = v; })
+    .onEnd(() => { if (entryFade.exists()) entryFade.destroy(); });
+
+  function runPolaroids(idx) {
+    if (idx >= polaroidCfgs.length) { k.wait(0.3, startMoment2); return; }
+    makePolaroid(polaroidCfgs[idx], () => runPolaroids(idx + 1));
+  }
+  k.wait(1.0, () => runPolaroids(0));
 });
 
 k.go("menu");

@@ -87,6 +87,20 @@ k.loadSprite("sprite_estrela_c", "sprites/sprite_estrela_c.png", { sliceX: 8, sl
 k.loadSprite("recompensa_flores",        "sprites/recompensa_flores.png");
 k.loadSprite("recompensa_beijos",        "sprites/recompensa_beijos.png");
 k.loadSprite("recompensa_interrogacao",  "sprites/recompensa_interrogacao.png");
+k.loadSprite("obs_pedra",    "sprites/obs_pedra.png");
+k.loadSprite("obs_galho",    "sprites/obs_galho.png");
+k.loadSprite("obs_cachorro", "sprites/obs_cachorro.png", {
+  sliceX: 4, sliceY: 1,
+  anims: { run: { from: 0, to: 3, loop: true, speed: 8 } }
+});
+k.loadSprite("obs_acai", "sprites/obs_acai.png", {
+  sliceX: 4, sliceY: 1,
+  anims: { ride: { from: 0, to: 3, loop: true, speed: 6 } }
+});
+k.loadSprite("obs_ciclista", "sprites/obs_ciclista.png", {
+  sliceX: 4, sliceY: 1,
+  anims: { ride: { from: 0, to: 3, loop: true, speed: 10 } }
+});
 
 // "keyboard" em desktops, "joystick" em dispositivos touch — detectado automaticamente
 let controlMode = window.matchMedia("(pointer: coarse)").matches ? "joystick" : "keyboard";
@@ -1633,6 +1647,8 @@ k.scene("selecionar_fase", () => {
     { label: "Fase 2: O Campinho", scene: "missao2", color: [100, 160, 255] },
     { label: "Fase 3: O Beijo",    scene: "missao3", color: [140,  80, 180] },
     { label: "Fase 4: A Sintonia", scene: "missao4", color: [180,  60,  80] },
+    { label: "Fase 5: A Subida",   scene: "subida",  color: [240, 140,  50] },
+    { label: "Fase 6: O Pedido",   scene: "pedido",  color: [ 90, 160, 220] },
   ];
   const FASES_POR_PAGINA = 3;
   let paginaAtual = 0;
@@ -2734,8 +2750,9 @@ k.scene("missao4", () => {
   let paused         = false;
   let destroyPause   = null;
   let gameEnded      = false;   // true ao vencer ou perder
-  let spawnLoop      = null;    // handle do k.loop (para cancelar)
-  let defeatHandlers = [];      // handlers do diálogo de derrota (para cancelar)
+  let spawnLoop       = null;    // handle do k.loop (para cancelar)
+  let defeatHandlers  = [];      // handlers do diálogo de derrota (para cancelar)
+  let victoryHandlers = [];      // handlers do diálogo de vitória (para cancelar)
 
   // ── Áudio (Web Audio API) ─────────────────────────────────────────────────
   let audioCtx4 = null;
@@ -2943,8 +2960,120 @@ k.scene("missao4", () => {
       k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0),
       k.opacity(0), k.z(70), k.fixed(),
     ]);
-    k.tween(0, 1, 1.2, v => { fade.opacity = v; })
-      .onEnd(() => { k.go("menu"); });   // TODO: trocar para k.go("missao5") quando existir
+    k.tween(0, 1, 0.8, v => { fade.opacity = v; })
+      .onEnd(() => { showVictoryScene(fade); });
+  }
+
+  // ── Sub-cena de vitória: mesmo cenário + diálogo ──────────────────────────
+  function showVictoryScene(fade) {
+    k.get("hud").forEach(o => { o.hidden = true; });
+
+    vivi.pos.x = SW / 2 - 42 * SC; vivi.pos.y = SH * 0.5; vivi.play("idle-right");
+    gigi.pos.x = SW / 2 + 42 * SC; gigi.pos.y = SH * 0.5; gigi.play("idle-left");
+
+    k.tween(1, 0, 0.6, v => { fade.opacity = v; })
+      .onEnd(() => { if (fade.exists()) fade.destroy(); startVictoryDialog(); });
+  }
+
+  function startVictoryDialog() {
+    const victoryDialogs = [
+      { speaker: "vivi", name: "Vivi",     text: ". . .",                         type: "fala"  },
+      { speaker: "gigi", name: "Giovanna", text: ". . .",                         type: "fala"  },
+      { speaker: "vivi", name: "Vivi",     text: "Isso foi muito bom.",            type: "fala"  },
+      { speaker: "vivi", name: "Vivi",     text: "Estou sem palavras",             type: "fala"  },
+      { speaker: "gigi", name: "Giovanna", text: "*tímida*",                       type: "pensa" },
+      { speaker: "vivi", name: "Vivi",     text: "Me apaixonei",                   type: "pensa" },
+      { speaker: "vivi", name: "Vivi",     text: "Vou me casar com essa mulher.",  type: "pensa" },
+      { speaker: "gigi", name: "Giovanna", text: "MEU DEEEEUSSSS EU TE AMOOOOO!", type: "pensa" },
+      { speaker: "gigi", name: "Giovanna", text: "Kkkk, você é engraçado.",        type: "fala"  },
+    ];
+
+    const DW = 460 * SC, DH = 100 * SC;
+    const DY = SH - DH / 2 - 12 * SC;
+    const PORTRAIT_CX = SW / 2 - DW / 2 + 50 * SC;
+    const TEXT_X      = SW / 2 - DW / 2 + 100 * SC;
+
+    const dBorder = k.add([k.rect(DW + 4 * SC, DH + 4 * SC, { radius: 12 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(255, 105, 180), k.opacity(0.92), k.z(80), k.fixed()]);
+    const dBg     = k.add([k.rect(DW, DH, { radius: 10 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(18, 4, 32), k.opacity(0.92), k.z(81), k.fixed()]);
+    const pBorder = k.add([k.rect(84 * SC, 84 * SC, { radius: 4 * SC }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.color(255, 105, 180), k.z(82), k.fixed()]);
+    const pFill   = k.add([k.rect(80 * SC, 80 * SC, { radius: 3 * SC }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.color(30, 8, 48), k.z(83), k.fixed()]);
+    const pScaleVivi = (80 * SC * 0.7) / 16;
+    const pScaleGigi = (80 * SC * 0.20) / 16;
+    const pVivi   = k.add([k.sprite("vivi", { frame: 0 }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.scale(pScaleVivi), k.z(84), k.fixed()]);
+    const pGigi   = k.add([k.sprite("gigi", { frame: 0 }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.scale(pScaleGigi), k.z(84), k.fixed()]);
+    const dName   = k.add([k.text("", { size: fs(8), font: "pressstart2p" }), k.pos(TEXT_X, DY - DH / 2 + 14 * SC), k.color(255, 105, 180), k.z(85), k.fixed()]);
+    const dText   = k.add([k.text("", { size: fs(7), font: "pressstart2p", width: DW - 110 * SC, align: "left" }), k.pos(TEXT_X, DY - DH / 2 + 30 * SC), k.color(255, 245, 255), k.z(85), k.fixed()]);
+    const dArrow  = k.add([k.text("▼", { size: fs(8), font: "pressstart2p" }), k.pos(SW / 2 + DW / 2 - 16 * SC, DY + DH / 2 - 14 * SC), k.color(255, 255, 255), k.opacity(0), k.z(85), k.fixed()]);
+    const box = [dBorder, dBg, pBorder, pFill, pVivi, pGigi, dName, dText, dArrow];
+
+    let dIndex = 0, fullText = "", charIdx = 0, typingDone = false, typingHandle = null;
+    let arrowVisible = false, arrowTimer = 0, dialogDone = false;
+
+    function typeText(t) {
+      fullText = t; charIdx = 0; typingDone = false;
+      arrowVisible = false; arrowTimer = 0; dArrow.opacity = 0; dText.text = "";
+      function step() {
+        if (charIdx >= t.length) { typingDone = true; arrowVisible = true; return; }
+        dText.text = t.slice(0, charIdx + 1);
+        playTypingSound();
+        charIdx++;
+        typingHandle = k.wait(0.03, step);
+      }
+      step();
+    }
+
+    function show(i) {
+      const d = victoryDialogs[i];
+      if (d.type === "pensa") {
+        dName.text    = d.name + " pensa:";
+        dName.color   = k.rgb(180, 140, 255);
+        dText.color   = k.rgb(210, 200, 255);
+        dBorder.color = k.rgb(140, 90, 220);
+      } else {
+        dName.text    = d.name;
+        dName.color   = k.rgb(255, 105, 180);
+        dText.color   = k.rgb(255, 245, 255);
+        dBorder.color = k.rgb(255, 105, 180);
+      }
+      pVivi.hidden = d.speaker !== "vivi";
+      pGigi.hidden = d.speaker !== "gigi";
+      typeText(d.text);
+    }
+
+    function advance() {
+      if (dialogDone) return;
+      if (!typingDone) {
+        if (typingHandle) { typingHandle.cancel(); typingHandle = null; }
+        dText.text = fullText; typingDone = true; arrowVisible = true;
+        return;
+      }
+      arrowVisible = false; arrowTimer = 0; dArrow.opacity = 0;
+      dIndex++;
+      if (dIndex >= victoryDialogs.length) {
+        dialogDone = true;
+        victoryHandlers.forEach(h => h.cancel());
+        victoryHandlers = [];
+        box.forEach(o => o.destroy());
+        const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(86), k.fixed()]);
+        k.tween(0, 1, 1.2, v => { fade.opacity = v; })
+          .onEnd(() => { k.go("intro_subida"); });
+      } else {
+        show(dIndex);
+      }
+    }
+
+    const arrowTick = k.onUpdate(() => {
+      if (arrowVisible) {
+        arrowTimer += k.dt();
+        dArrow.opacity = Math.sin(arrowTimer * 6) > 0 ? 1 : 0;
+      }
+    });
+    const h1 = k.onKeyPress("space",  advance);
+    const h2 = k.onKeyPress("return", advance);
+    const h3 = k.onClick(advance);
+    victoryHandlers = [arrowTick, h1, h2, h3];
+
+    show(0);
   }
 
   // ── Derrota ──────────────────────────────────────────────────────────────────
@@ -3122,6 +3251,881 @@ k.scene("missao4", () => {
 
   updateBar();
   updateLives();
+});
+
+// ── Cena: INTRO SUBIDA – cinemática antes da fase 5 ─────────────────────
+k.scene("intro_subida", () => {
+  const overlay = k.add([
+    k.rect(SW, SH), k.pos(0, 0),
+    k.color(0, 0, 0), k.opacity(1),
+    k.z(90), k.fixed(),
+  ]);
+
+  // ── Bloco 1: narrativa ────────────────────────────────────────────────────
+  const txt1 = k.add([
+    k.text("Depois desse dia nada foi\nigual na vida deles.", {
+      size: fs(11), font: "pressstart2p", width: 400 * SC, align: "center",
+    }),
+    k.pos(SW / 2, SH / 2 - 22 * SC), k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0), k.z(91), k.fixed(),
+  ]);
+
+  const txt2 = k.add([
+    k.text("Os dois ficaram apaixonados.", {
+      size: fs(10), font: "pressstart2p", width: 400 * SC, align: "center",
+    }),
+    k.pos(SW / 2, SH / 2 + 26 * SC), k.anchor("center"),
+    k.color(200, 180, 255), k.opacity(0), k.z(91), k.fixed(),
+  ]);
+
+  k.wait(0.5, () => k.tween(0, 1, 0.8, v => { txt1.opacity = v; }));
+  k.wait(2.2, () => k.tween(0, 1, 0.8, v => { txt2.opacity = v; }));
+  k.wait(5.5, () => {
+    k.tween(1, 0, 0.6, v => { txt1.opacity = v; });
+    k.tween(1, 0, 0.6, v => { txt2.opacity = v; });
+  });
+
+  // ── Bloco 2: data e local ─────────────────────────────────────────────────
+  const txt3 = k.add([
+    k.text("28 de junho de 2022  18:21", {
+      size: fs(12), font: "pressstart2p", width: 440 * SC, align: "center",
+    }),
+    k.pos(SW / 2, SH / 2 - 20 * SC), k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0), k.z(91), k.fixed(),
+  ]);
+
+  const txt4 = k.add([
+    k.text("Trilha do Cristo", {
+      size: fs(10), font: "pressstart2p", align: "center",
+    }),
+    k.pos(SW / 2, SH / 2 + 22 * SC), k.anchor("center"),
+    k.color(200, 200, 200), k.opacity(0), k.z(91), k.fixed(),
+  ]);
+
+  k.wait(7.0, () => k.tween(0, 1, 0.8, v => { txt3.opacity = v; }));
+  k.wait(8.6, () => k.tween(0, 1, 0.8, v => { txt4.opacity = v; }));
+  k.wait(12.5, () => {
+    k.tween(1, 0, 0.6, v => { txt3.opacity = v; });
+    k.tween(1, 0, 0.6, v => { txt4.opacity = v; });
+  });
+  k.wait(13.5, () => { k.go("subida"); });
+});
+
+// ── Cena: SUBIDA – A RAMPA DO CRISTO (minigame estilo Dino) ──────────────
+k.scene("subida", () => {
+  // ── Estado ───────────────────────────────────────────────────────────────
+  let paused       = false;
+  let destroyPause = null;
+  let gameEnded    = false;
+  let started      = false;   // true após a introdução; libera spawn e cronômetro
+  let elapsed      = 0;
+  let erros        = 0;       // colisões sofridas (3 = derrota)
+  let invulnTimer  = 0;       // janela de invencibilidade após apanhar
+  let spawnTimer   = 0;
+  let nextSpawn    = k.rand(1.3, 2.1);
+
+  const SURVIVE_TIME = 35;            // segundos para vencer
+  const GROUND_Y     = SH * 0.74;     // linha do chão (pés dos personagens)
+
+  // ── Áudio (Web Audio API) ─────────────────────────────────────────────────
+  let actx = null;
+  function ctxA() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); return actx; }
+  function beep(freq, type, dur, vol, slideTo) {
+    try {
+      const c = ctxA(), o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type; o.frequency.setValueAtTime(freq, c.currentTime);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, c.currentTime + dur);
+      g.gain.setValueAtTime(vol * getEffectsVolume(), c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.start(); o.stop(c.currentTime + dur);
+    } catch (e) {}
+  }
+  function playJump()  { beep(520, "sine",   0.12, 0.16, 880); }
+  function playHit()   { beep(200, "square", 0.20, 0.20); }
+  function playBark()  { beep(300, "square", 0.08, 0.18, 190); k.wait(0.11, () => beep(280, "square", 0.08, 0.18, 170)); }
+  function playPop()   { beep(900, "square", 0.06, 0.12); }
+  function playFail()  { beep(420, "sawtooth", 0.5, 0.2, 70); }
+  function playWin()   {
+    try {
+      const c = ctxA();
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = "sine"; o.frequency.value = f;
+        const t = c.currentTime + i * 0.14;
+        g.gain.setValueAtTime(0.25 * getEffectsVolume(), t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        o.start(t); o.stop(t + 0.3);
+      });
+    } catch (e) {}
+  }
+
+  // ── Céu em degradê (dia → por do sol laranja) ─────────────────────────────
+  const SKY_BANDS = 8;
+  const bandH = GROUND_Y / SKY_BANDS;
+  const skyBands = [];
+  for (let i = 0; i < SKY_BANDS; i++) {
+    skyBands.push(k.add([
+      k.rect(SW, bandH + 2), k.pos(0, i * bandH),
+      k.color(0, 0, 0), k.z(0), k.fixed(),
+    ]));
+  }
+  const lerpN = (a, b, t) => a + (b - a) * t;
+  function setSky(p) {
+    const dayTop = [120, 180, 255], dayBot = [205, 232, 255];
+    const sunTop = [ 60,  40, 110], sunBot = [255, 150,  60];
+    const top = dayTop.map((c, i) => lerpN(c, sunTop[i], p));
+    const bot = dayBot.map((c, i) => lerpN(c, sunBot[i], p));
+    skyBands.forEach((b, i) => {
+      const t = SKY_BANDS > 1 ? i / (SKY_BANDS - 1) : 0;
+      b.color = k.rgb(
+        Math.round(lerpN(top[0], bot[0], t)),
+        Math.round(lerpN(top[1], bot[1], t)),
+        Math.round(lerpN(top[2], bot[2], t)),
+      );
+    });
+  }
+  setSky(0);
+
+  // ── Sol ────────────────────────────────────────────────────────────────────
+  const SUN_TOP = GROUND_Y - 150 * SC;
+  const SUN_BOT = GROUND_Y -  18 * SC;
+  const sun = k.add([
+    k.circle(40 * SC), k.pos(SW * 0.70, SUN_TOP), k.anchor("center"),
+    k.color(255, 240, 180), k.opacity(0.95), k.z(1), k.fixed(),
+  ]);
+
+  // ── Morros distantes (parallax lento) ──────────────────────────────────────
+  const hills = [];
+  for (let i = 0; i < 4; i++) {
+    const r = k.rand(90, 150) * SC;
+    hills.push(k.add([
+      k.circle(r), k.pos((i / 4) * (SW + 200 * SC), GROUND_Y + r * 0.5), k.anchor("center"),
+      k.color(90, 70, 120), k.opacity(0.85), k.z(1), k.fixed(),
+    ]));
+  }
+
+  // ── Chão (trilha de montanha) ──────────────────────────────────────────────
+  k.add([k.rect(SW, SH - GROUND_Y + 2), k.pos(0, GROUND_Y), k.color(120, 90, 60), k.z(2), k.fixed()]);
+  k.add([k.rect(SW, 3 * SC), k.pos(0, GROUND_Y), k.color(150, 115, 75), k.z(3), k.fixed()]);
+
+  // Tracinhos na superfície → dão a sensação de movimento
+  const dashes = [];
+  for (let i = 0; i < 16; i++) {
+    dashes.push(k.add([
+      k.rect(28 * SC, 5 * SC, { radius: 2 * SC }),
+      k.pos(k.rand(0, SW), GROUND_Y + k.rand(14 * SC, (SH - GROUND_Y) - 10 * SC)),
+      k.color(95, 70, 45), k.opacity(0.7), k.z(3), k.fixed(),
+    ]));
+  }
+
+  // ── Vivi e Gigi: parados no centro/esquerda, apenas pulando ────────────────
+  const VIVI_SCALE = 8, GIGI_SCALE = 2.2;   // proporção do projeto (vivi ~3.6x gigi)
+  const CHAR_X = SW * 0.30;
+  const vivi = k.add([
+    k.sprite("vivi"), k.pos(CHAR_X, GROUND_Y), k.anchor("bot"),
+    k.scale(VIVI_SCALE), k.opacity(1), k.z(6), k.fixed(),
+  ]);
+  vivi.play("walk-right");
+  const gigi = k.add([
+    k.sprite("gigi"), k.pos(CHAR_X, GROUND_Y), k.anchor("bot"),
+    k.scale(GIGI_SCALE), k.opacity(1), k.z(6), k.fixed(),
+  ]);
+  gigi.play("walk-right");
+
+  // Posiciona os dois lado a lado, centrados em CHAR_X
+  const viviW = (vivi.width  || 10) * VIVI_SCALE;
+  const viviH = (vivi.height || 10) * VIVI_SCALE;
+  const gigiW = (gigi.width  || 10) * GIGI_SCALE;
+  const gigiH = (gigi.height || 10) * GIGI_SCALE;
+  const GAP   = 6 * SC;
+  const pairW = viviW + GAP + gigiW;
+  const pairH = Math.max(viviH, gigiH);
+  const pairLeft = CHAR_X - pairW / 2;
+  vivi.pos.x = pairLeft + viviW / 2;
+  gigi.pos.x = pairLeft + viviW + GAP + gigiW / 2;
+
+  // ── Pulo (controla os DOIS personagens ao mesmo tempo) ─────────────────────
+  const GRAVITY = 2800 * SC;
+  const JUMP_V  = 800  * SC;
+  let vy = 0, jumpOffset = 0, onGround = true;
+  function jump() {
+    if (paused || gameEnded) return;
+    if (onGround) { vy = JUMP_V; onGround = false; playJump(); }
+  }
+  k.onKeyPress("space", jump);
+  k.onMousePress("left", jump);   // toque na tela (touchToMouse) e clique
+
+  // ── Velocidade do mundo (cresce com o tempo) ───────────────────────────────
+  const BASE_SPEED   = 240 * SC;
+  const SPEED_GROWTH =   9 * SC;   // por segundo
+  const worldSpeed = () => BASE_SPEED + elapsed * SPEED_GROWTH;
+
+  // ── HUD: vidas (canto superior direito) ────────────────────────────────────
+  const hearts = [];
+  for (let i = 0; i < 3; i++) {
+    hearts.push(k.add([
+      k.text("❤️", { size: fs(14) }),
+      k.pos(SW - 16 * SC - (2 - i) * 30 * SC, 14 * SC), k.anchor("top"),
+      k.z(41), k.fixed(), "hud",
+    ]));
+  }
+  function updateLives() {
+    for (let i = 0; i < 3; i++) hearts[i].text = (i < 3 - erros) ? "❤️" : "\u{1F494}";
+  }
+  updateLives();
+
+  // ── HUD: barra de progresso (canto superior esquerdo) ──────────────────────
+  const PB_W = 200 * SC, PB_H = 12 * SC, PB_X = 16 * SC, PB_Y = 30 * SC;
+  k.add([k.text("⛰️ Rampa do Cristo", { size: fs(7), font: "pressstart2p" }), k.pos(PB_X, 12 * SC), k.color(255, 255, 255), k.z(41), k.fixed(), "hud"]);
+  k.add([k.rect(PB_W, PB_H, { radius: 3 * SC }), k.pos(PB_X, PB_Y), k.color(40, 40, 48), k.z(40), k.fixed(), "hud"]);
+  const pbFill = k.add([k.rect(1, PB_H, { radius: 3 * SC }), k.pos(PB_X, PB_Y), k.color(120, 220, 120), k.z(41), k.fixed(), "hud"]);
+  function updateProgress() {
+    const t = Math.min(1, elapsed / SURVIVE_TIME);
+    pbFill.width = Math.max(1, PB_W * t);
+  }
+
+  // ── Texto flutuante de feedback ────────────────────────────────────────────
+  function floatText(x, y, txt, col) {
+    const p = k.add([
+      k.text(txt, { size: fs(14), font: "pressstart2p" }),
+      k.pos(x, y), k.anchor("center"),
+      k.color(col[0], col[1], col[2]), k.opacity(1), k.z(16), k.fixed(),
+    ]);
+    k.tween(y, y - 30 * SC, 0.5, v => { p.pos.y = v; });
+    k.tween(1, 0, 0.5, v => { p.opacity = v; });
+    k.wait(0.5, () => { if (p.exists()) p.destroy(); });
+  }
+
+  // ── Obstáculos ─────────────────────────────────────────────────────────────
+  // mul = tamanho relativo à altura dos personagens (mantém proporção em qualquer tela)
+  const obstacleTypes = [
+    { sprite: "obs_pedra",    scale: 9,   speedMul: 1.0, sound: null,   anim: null   },
+    { sprite: "obs_galho",    scale: 9,   speedMul: 1.0, sound: null,   anim: null   },
+    { sprite: "obs_cachorro", scale: 7,   speedMul: 1.0, sound: "bark", anim: "run"  },
+    { sprite: "obs_acai",     scale: 10, speedMul: 1.0, sound: "pop",  anim: "ride" },
+    { sprite: "obs_ciclista", scale: 10,   speedMul: 1.7, sound: null,   anim: "ride" },
+  ];
+  function spawnObstacle() {
+    const def = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+    const ob = k.add([
+      k.sprite(def.sprite),
+      k.pos(SW + 50 * SC, GROUND_Y), k.anchor("bot"),
+      k.scale(def.scale),
+      k.z(5), k.fixed(), "subida-ob",
+      { speedMul: def.speedMul, hitDone: false },
+    ]);
+    if (def.anim) ob.play(def.anim);
+    if (def.sound === "bark") playBark();
+    if (def.sound === "pop")  playPop();
+    return ob;
+  }
+
+  // ── AABB ───────────────────────────────────────────────────────────────────
+  const overlap = (a, b) =>
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  function charBox() {
+    const w = pairW * 0.62, h = pairH * 0.78;          // caixa generosa (justa para o jogador)
+    const bottom = GROUND_Y - jumpOffset;
+    return { x: CHAR_X - w / 2, y: bottom - h, w, h };
+  }
+  function obBox(ob) {
+  const w = ob.width  * ob.scale.x * 0.60;
+  const h = ob.height * ob.scale.y * 0.4;
+  return { x: ob.pos.x - w / 2, y: ob.pos.y - ob.height * ob.scale.y, w, h };
+}
+
+  function loseLife(ob) {
+    erros++;
+    updateLives();
+    playHit();
+    invulnTimer = 1.0;
+    floatText(ob.pos.x, GROUND_Y - pairH * 0.7, "\u{1F4A5}", [255, 120, 80]);
+    if (erros >= 3) onDeath();
+  }
+
+  // ── Derrota: mensagem cômica rápida → reinicia o minigame ──────────────────
+  function onDeath() {
+    if (gameEnded) return;
+    gameEnded = true;
+    playFail();
+    k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0.5), k.z(59), k.fixed()]);
+    k.add([
+      k.text("Vish... \u{1F635}", { size: fs(20), font: "pressstart2p", align: "center" }),
+      k.pos(SW / 2, SH * 0.42), k.anchor("center"),
+      k.color(255, 90, 90), k.z(60), k.fixed(),
+    ]);
+    k.add([
+      k.text("Bora de novo!", { size: fs(9), font: "pressstart2p", align: "center" }),
+      k.pos(SW / 2, SH * 0.55), k.anchor("center"),
+      k.color(255, 255, 255), k.z(60), k.fixed(),
+    ]);
+    k.wait(1.5, () => { k.go("subida"); });
+  }
+
+  // ── Vitória: fade suave → cena pedido ──────────────────────────────────────
+  function goNext() {
+    // "pedido" ainda não existe: cai no menu até a cena ser criada.
+    k.go("pedido");
+  }
+  function onWin() {
+    if (gameEnded) return;
+    gameEnded = true;
+    playWin();
+    const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(70), k.fixed()]);
+    k.tween(0, 1, 1.2, v => { fade.opacity = v; }).onEnd(() => { goNext(); });
+  }
+
+  // ── Pause (escape) ─────────────────────────────────────────────────────────
+  k.onKeyPress("escape", () => {
+    if (gameEnded) return;
+    if (paused) {
+      if (destroyPause) { destroyPause(); destroyPause = null; }
+      paused = false;
+    } else {
+      paused = true;
+      destroyPause = makePauseOverlay(() => {
+        paused = false; destroyPause = null;
+        document.body.style.cursor = "default";
+      });
+    }
+  });
+
+  // ── Introdução ─────────────────────────────────────────────────────────────
+  const introBg = k.add([k.rect(SW, 78 * SC), k.pos(SW / 2, SH * 0.30), k.anchor("center"), k.color(18, 4, 32), k.opacity(0), k.z(44), k.fixed()]);
+  const introTxt = k.add([
+    k.text("Ajude Vivi e Gigi a subirem a\nRampa do Cristo!", { size: fs(11), font: "pressstart2p", align: "center", width: SW * 0.82 }),
+    k.pos(SW / 2, SH * 0.30), k.anchor("center"),
+    k.color(255, 245, 255), k.opacity(0), k.z(45), k.fixed(),
+  ]);
+  k.tween(0, 1, 0.5, v => { introTxt.opacity = v; introBg.opacity = v * 0.7; });
+  k.wait(3.5, () => {
+    k.tween(1, 0, 0.5, v => { introTxt.opacity = v; introBg.opacity = v * 0.7; })
+      .onEnd(() => { introTxt.destroy(); introBg.destroy(); started = true; });
+  });
+
+  // ── Loop principal ─────────────────────────────────────────────────────────
+  k.onUpdate(() => {
+    if (paused || gameEnded) return;
+    const dt = k.dt();
+
+    // Pulo (sincronizado nos dois)
+    if (!onGround) {
+      jumpOffset += vy * dt;
+      vy -= GRAVITY * dt;
+      if (jumpOffset <= 0) { jumpOffset = 0; vy = 0; onGround = true; }
+    }
+    vivi.pos.y = GROUND_Y - jumpOffset;
+    gigi.pos.y = GROUND_Y - jumpOffset;
+
+    // Piscar durante a invencibilidade
+    if (invulnTimer > 0) {
+      invulnTimer -= dt;
+      const bl = Math.sin(k.time() * 30) > 0 ? 1 : 0.4;
+      vivi.opacity = bl; gigi.opacity = bl;
+    } else {
+      vivi.opacity = 1; gigi.opacity = 1;
+    }
+
+    // Cenário sempre rola (mesmo durante a introdução)
+    const spd = worldSpeed();
+    const p = Math.min(1, elapsed / SURVIVE_TIME);
+    dashes.forEach(d => {
+      d.pos.x -= spd * dt;
+      if (d.pos.x < -40 * SC) {
+        d.pos.x = SW + k.rand(0, 60 * SC);
+        d.pos.y = GROUND_Y + k.rand(14 * SC, (SH - GROUND_Y) - 10 * SC);
+      }
+    });
+    hills.forEach(h => {
+      h.pos.x -= spd * 0.25 * dt;
+      if (h.pos.x < -h.radius) h.pos.x = SW + h.radius;
+      h.color = k.rgb(Math.round(90 - 45 * p), Math.round(70 - 40 * p), Math.round(120 - 55 * p));
+    });
+    setSky(p);
+    sun.pos.y  = lerpN(SUN_TOP, SUN_BOT, p);
+    sun.color  = k.rgb(255, Math.round(240 - 120 * p), Math.round(180 - 130 * p));
+
+    if (!started) return;
+
+    // Cronômetro / progresso
+    elapsed += dt;
+    updateProgress();
+
+    // Spawn de obstáculos (intervalo encurta com o tempo)
+    spawnTimer += dt;
+    if (spawnTimer >= nextSpawn) {
+      spawnObstacle();
+      spawnTimer = 0;
+      nextSpawn = Math.max(0.8, k.rand(1.3, 2.1) - elapsed * 0.015);
+    }
+
+    // Move obstáculos + colisão
+    const cb = charBox();
+    k.get("subida-ob").forEach(ob => {
+      ob.pos.x -= spd * ob.speedMul * dt;
+      if (ob.pos.x < -60 * SC) { ob.destroy(); return; }
+      if (!ob.hitDone && invulnTimer <= 0 && overlap(cb, obBox(ob))) {
+        ob.hitDone = true;
+        loseLife(ob);
+      }
+    });
+
+    // Vitória
+    if (elapsed >= SURVIVE_TIME) onWin();
+  });
+});
+
+// ── Cena: PEDIDO – Rampa do Cristo, pôr do sol ───────────────────────────
+k.scene("pedido", () => {
+  // ── Constantes ────────────────────────────────────────────────────────────
+  const GROUND_Y = SH * 0.74;
+  let paused = false, destroyPause = null, sceneEnded = false;
+
+  // ── Áudio – Web Audio API ─────────────────────────────────────────────────
+  let actx = null;
+  function ctxA() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    return actx;
+  }
+  function beep(freq, type, dur, vol, t0) {
+    try {
+      const c = ctxA(), o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type; o.frequency.value = freq;
+      const st = t0 ?? c.currentTime;
+      g.gain.setValueAtTime(vol * getEffectsVolume(), st);
+      g.gain.exponentialRampToValueAtTime(0.001, st + dur);
+      o.start(st); o.stop(st + dur);
+    } catch (e) {}
+  }
+  function playTypingSound() { beep(800 + Math.random() * 400, "square", 0.04, 0.05); }
+  function playConfirm() {
+    try {
+      const c = ctxA();
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const t = c.currentTime + i * 0.14;
+        beep(f, "sine", 0.3, 0.25, t);
+      });
+    } catch (e) {}
+  }
+  function playEscape() { beep(800, "sawtooth", 0.18, 0.14, null); beep(400, "sawtooth", 0.14, 0.10, null); }
+
+  // ── Melodia romântica em loop (Can't Help Falling in Love) ────────────────
+  let melodyHandle = null;
+  const NOTES = [261, 330, 392, 440, 392, 330, 261];
+  function playMelodyNote(idx) {
+    if (sceneEnded) return;
+    const freq = NOTES[idx % NOTES.length];
+    beep(freq, "sine", 0.45, 0.08);
+    melodyHandle = k.wait(0.52, () => playMelodyNote(idx + 1));
+  }
+  playMelodyNote(0);
+
+  // ── Céu (pôr do sol fixo, p=1) ────────────────────────────────────────────
+  const SKY_BANDS = 8;
+  const bandH = GROUND_Y / SKY_BANDS;
+  const sunTop_c = [60,  40, 110], sunBot_c = [255, 150, 60];
+  for (let i = 0; i < SKY_BANDS; i++) {
+    const t = SKY_BANDS > 1 ? i / (SKY_BANDS - 1) : 0;
+    k.add([
+      k.rect(SW, bandH + 2), k.pos(0, i * bandH),
+      k.color(
+        Math.round(sunTop_c[0] + (sunBot_c[0] - sunTop_c[0]) * t),
+        Math.round(sunTop_c[1] + (sunBot_c[1] - sunTop_c[1]) * t),
+        Math.round(sunTop_c[2] + (sunBot_c[2] - sunTop_c[2]) * t),
+      ),
+      k.z(0), k.fixed(),
+    ]);
+  }
+
+  // ── Sol com halo e pulso ───────────────────────────────────────────────────
+  const SUN_Y = SH * 0.62;
+  const halo = k.add([
+    k.circle(62 * SC), k.pos(SW * 0.68, SUN_Y), k.anchor("center"),
+    k.color(255, 200, 100), k.opacity(0.30), k.z(1), k.fixed(),
+  ]);
+  const sun = k.add([
+    k.circle(55 * SC), k.pos(SW * 0.68, SUN_Y), k.anchor("center"),
+    k.color(255, 160, 60), k.opacity(0.95), k.z(2), k.fixed(),
+  ]);
+  k.onUpdate(() => {
+    if (sceneEnded) return;
+    const r = (53 + Math.sin(k.time() * 1.5) * 2) * SC;
+    sun.radius  = r;
+    halo.radius = r + 8 * SC;
+  });
+
+  // ── Morros (silhueta escura) ───────────────────────────────────────────────
+  [[SW * 0.10, 130], [SW * 0.30, 110], [SW * 0.55, 145], [SW * 0.80, 120]].forEach(([x, r]) => {
+    k.add([
+      k.circle(r * SC), k.pos(x, GROUND_Y + r * SC * 0.5), k.anchor("center"),
+      k.color(40, 25, 55), k.z(1), k.fixed(),
+    ]);
+  });
+
+  // ── Chão ──────────────────────────────────────────────────────────────────
+  k.add([k.rect(SW, SH - GROUND_Y + 2), k.pos(0, GROUND_Y), k.color(120, 90, 60), k.z(2), k.fixed()]);
+  k.add([k.rect(SW, 3 * SC), k.pos(0, GROUND_Y), k.color(150, 115, 75), k.z(3), k.fixed()]);
+
+  // ── Estrelinhas (aparecem gradualmente com o diálogo) ─────────────────────
+  const STAR_POSITIONS = [
+    [SW * 0.08, SH * 0.06], [SW * 0.22, SH * 0.12], [SW * 0.40, SH * 0.05],
+    [SW * 0.58, SH * 0.10], [SW * 0.72, SH * 0.04], [SW * 0.85, SH * 0.15],
+    [SW * 0.15, SH * 0.22], [SW * 0.92, SH * 0.08],
+  ];
+  const stars = STAR_POSITIONS.map((pos, i) => {
+    const s = k.add([
+      k.text("★", { size: fs(10) }),
+      k.pos(pos[0], pos[1]), k.anchor("center"),
+      k.color(255, 240, 180), k.opacity(0), k.z(1), k.fixed(),
+    ]);
+    s.onUpdate(() => {
+      if (s.opacity > 0) s.opacity = Math.max(s.opacity, 0.4 + Math.sin(k.time() * 2 + i) * 0.35);
+    });
+    return s;
+  });
+  let starsRevealed = 0;
+  function revealNextStars() {
+    const toReveal = Math.min(2, stars.length - starsRevealed);
+    for (let i = 0; i < toReveal; i++) {
+      const s = stars[starsRevealed + i];
+      k.tween(0, 0.75, 1.2, v => { s.opacity = v; });
+    }
+    starsRevealed += toReveal;
+  }
+
+  // ── Personagens ───────────────────────────────────────────────────────────
+  const VIVI_X = SW * 0.38, GIGI_X = SW * 0.52;
+  const vivi = k.add([
+    k.sprite("vivi"), k.pos(VIVI_X, GROUND_Y), k.anchor("bot"),
+    k.scale(8), k.z(6), k.fixed(),
+  ]);
+  vivi.play("idle-right");
+
+  const gigi = k.add([
+    k.sprite("gigi"), k.pos(GIGI_X, GROUND_Y), k.anchor("bot"),
+    k.scale(2.2), k.z(6), k.fixed(),
+  ]);
+  gigi.play("idle-left");
+
+  // ── Tremor de nervosismo em Vivi ──────────────────────────────────────────
+  let viviShaking = true;
+  let viviBaseX = VIVI_X;
+  k.onUpdate(() => {
+    if (viviShaking) vivi.pos.x = viviBaseX + k.rand(-0.4, 0.4) * SC;
+  });
+
+  // ── Suor flutuante ────────────────────────────────────────────────────────
+  let sweatActive = true;
+  k.loop(1.1, () => {
+    if (!sweatActive) return;
+    const sw = k.add([
+      k.text("💧", { size: fs(9) }),
+      k.pos(VIVI_X + k.rand(-14, 14) * SC, GROUND_Y - 110 * SC), k.anchor("center"),
+      k.opacity(1), k.z(8), k.fixed(),
+    ]);
+    k.tween(sw.pos.y, sw.pos.y - 28 * SC, 0.8, v => { sw.pos.y = v; });
+    k.tween(1, 0, 0.8, v => { sw.opacity = v; });
+    k.wait(0.85, () => { if (sw.exists()) sw.destroy(); });
+  });
+
+  // ── Texto flutuante genérico ──────────────────────────────────────────────
+  function floatMsg(txt, col) {
+    const p = k.add([
+      k.text(txt, { size: fs(9), font: "pressstart2p", align: "center", width: 300 * SC }),
+      k.pos(SW / 2, SH * 0.34), k.anchor("center"),
+      k.color(col[0], col[1], col[2]), k.opacity(1), k.z(50), k.fixed(),
+    ]);
+    k.tween(SH * 0.34, SH * 0.28, 0.7, v => { p.pos.y = v; });
+    k.tween(1, 0, 0.9, v => { p.opacity = v; });
+    k.wait(0.95, () => { if (p.exists()) p.destroy(); });
+  }
+
+  // ── Caixa de diálogo (padrão missao3/4) ──────────────────────────────────
+  const DW = 460 * SC, DH = 100 * SC;
+  const DY = SH - DH / 2 - 12 * SC;
+  const PORTRAIT_CX = SW / 2 - DW / 2 + 50 * SC;
+  const TEXT_X      = SW / 2 - DW / 2 + 100 * SC;
+
+  const dBorder = k.add([k.rect(DW + 4 * SC, DH + 4 * SC, { radius: 12 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(255, 105, 180), k.opacity(0.92), k.z(29), k.fixed()]);
+  const dBg     = k.add([k.rect(DW, DH, { radius: 10 * SC }), k.pos(SW / 2, DY), k.anchor("center"), k.color(18, 4, 32), k.opacity(0.92), k.z(30), k.fixed()]);
+  const pBorder = k.add([k.rect(84 * SC, 84 * SC, { radius: 4 * SC }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.color(255, 105, 180), k.z(31), k.fixed()]);
+  const pFill   = k.add([k.rect(80 * SC, 80 * SC, { radius: 3 * SC }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.color(30, 8, 48), k.z(32), k.fixed()]);
+  const pScaleVivi = (80 * SC * 0.7) / 16;
+  const pScaleGigi = (80 * SC * 0.20) / 16;
+  const pVivi   = k.add([k.sprite("vivi", { frame: 0 }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.scale(pScaleVivi), k.z(33), k.fixed()]);
+  const pGigi   = k.add([k.sprite("gigi", { frame: 0 }), k.pos(PORTRAIT_CX, DY), k.anchor("center"), k.scale(pScaleGigi), k.z(33), k.fixed()]);
+  const dName   = k.add([k.text("", { size: fs(8), font: "pressstart2p" }), k.pos(TEXT_X, DY - DH / 2 + 14 * SC), k.color(255, 105, 180), k.z(34), k.fixed()]);
+  const dText   = k.add([k.text("", { size: fs(7), font: "pressstart2p", width: DW - 110 * SC, align: "left" }), k.pos(TEXT_X, DY - DH / 2 + 30 * SC), k.color(255, 245, 255), k.z(34), k.fixed()]);
+  const dArrow  = k.add([k.text("▼", { size: fs(8), font: "pressstart2p" }), k.pos(SW / 2 + DW / 2 - 16 * SC, DY + DH / 2 - 14 * SC), k.color(255, 255, 255), k.opacity(0), k.z(34), k.fixed()]);
+  const dialogBox = [dBorder, dBg, pBorder, pFill, pVivi, pGigi, dName, dText, dArrow];
+  let dialogActive = false;
+
+  function setDialogVisible(v) {
+    dialogBox.forEach((o, i) => { o.hidden = !v; });
+    dialogActive = v;
+  }
+  setDialogVisible(false);
+
+  // ── Sistema de digitação ──────────────────────────────────────────────────
+  let fullText = "", charIdx = 0, typingDone = false, typingHandle = null;
+  let arrowVisible = false, arrowTimer = 0;
+
+  function typeText(t) {
+    fullText = t; charIdx = 0; typingDone = false;
+    arrowVisible = false; arrowTimer = 0; dArrow.opacity = 0; dText.text = "";
+    function step() {
+      if (charIdx >= t.length) { typingDone = true; arrowVisible = true; return; }
+      dText.text = t.slice(0, charIdx + 1);
+      playTypingSound();
+      charIdx++;
+      typingHandle = k.wait(0.03, step);
+    }
+    step();
+  }
+
+  k.onUpdate(() => {
+    if (arrowVisible) {
+      arrowTimer += k.dt();
+      dArrow.opacity = Math.sin(arrowTimer * 6) > 0 ? 1 : 0;
+    }
+  });
+
+  // ── Dados dos diálogos ────────────────────────────────────────────────────
+  const dialogs = [
+    { speaker: "vivi", name: "Vivi",     text: "O por do sol ta muito lindo ne" },
+    { speaker: "gigi", name: "Giovanna", text: "sim..." },
+    { speaker: "vivi", name: "Vivi",     text: "Gi." },
+    { speaker: "gigi", name: "Giovanna", text: "Oi?" },
+    { speaker: "vivi", name: "Vivi",     text: "Deixa eu te fazer uma pergunta." },
+    { speaker: "gigi", name: "Giovanna", text: ". . ." },
+  ];
+  let dialogIndex = 0, dialogDone = false;
+  let dialogHandlers = [];
+
+  function showDialog(i) {
+    const d = dialogs[i];
+    // Revelar estrelas a cada 2 falas
+    if (i > 0 && i % 2 === 0) revealNextStars();
+    // Vivi vira para Gigi na fala "Gi."
+    if (d.text === "Gi.") { viviShaking = false; vivi.pos.x = viviBaseX; vivi.play("idle-left"); }
+    // Parar suor a partir da pergunta
+    if (d.text === "Deixa eu te fazer uma pergunta.") sweatActive = false;
+    dName.text = d.name;
+    setDialogVisible(true);
+    pVivi.hidden = d.speaker !== "vivi";
+    pGigi.hidden = d.speaker !== "gigi";
+    typeText(d.text);
+  }
+
+  function advanceDialog() {
+    if (paused || dialogDone || !dialogActive) return;
+    if (!typingDone) {
+      if (typingHandle) { typingHandle.cancel(); typingHandle = null; }
+      dText.text = fullText; typingDone = true; arrowVisible = true;
+      return;
+    }
+    arrowVisible = false; arrowTimer = 0; dArrow.opacity = 0;
+    dialogIndex++;
+    if (dialogIndex >= dialogs.length) {
+      dialogDone = true;
+      dialogHandlers.forEach(h => h.cancel());
+      // Fade out da caixa
+      dialogBox.forEach(o => k.tween(o.opacity ?? 1, 0, 0.4, v => { o.opacity = v; }));
+      k.wait(0.45, () => { dialogBox.forEach(o => { if (o.exists()) o.destroy(); }); });
+      k.wait(1.05, showProposa);
+    } else {
+      showDialog(dialogIndex);
+    }
+  }
+
+  const h1 = k.onKeyPress("space",  advanceDialog);
+  const h2 = k.onKeyPress("return", advanceDialog);
+  const h3 = k.onClick(advanceDialog);
+  dialogHandlers = [h1, h2, h3];
+
+  // Inicia o diálogo após um pequeno delay
+  k.wait(0.5, () => { showDialog(0); });
+
+  // ── Pause ─────────────────────────────────────────────────────────────────
+  k.onKeyPress("escape", () => {
+    if (sceneEnded) return;
+    if (paused) {
+      if (destroyPause) { destroyPause(); destroyPause = null; }
+      paused = false;
+    } else {
+      paused = true;
+      destroyPause = makePauseOverlay(() => { paused = false; destroyPause = null; });
+    }
+  });
+
+  // ── A Pergunta ────────────────────────────────────────────────────────────
+  function showProposa() {
+    // Última revelação de estrelas
+    while (starsRevealed < stars.length) revealNextStars();
+
+    const PROP_Y1 = SH * 0.36, PROP_Y2 = SH * 0.48;
+    const mkShadow = (txt, y, size) => k.add([
+      k.text(txt, { size: fs(size), font: "pressstart2p", align: "center", width: SW * 0.85 }),
+      k.pos(SW / 2 + 2 * SC, y + 2 * SC), k.anchor("center"),
+      k.color(0, 0, 0), k.opacity(0), k.z(38), k.fixed(),
+    ]);
+    const mkLabel = (txt, y, size, col) => k.add([
+      k.text(txt, { size: fs(size), font: "pressstart2p", align: "center", width: SW * 0.85 }),
+      k.pos(SW / 2, y), k.anchor("center"),
+      k.color(col[0], col[1], col[2]), k.opacity(0), k.z(39), k.fixed(),
+    ]);
+
+    const sh1 = mkShadow("Giovanna,", PROP_Y1, 13);
+    const lb1 = mkLabel ("Giovanna,", PROP_Y1, 13, [255, 255, 255]);
+
+    // Digita linha 1
+    let c1 = 0, full1 = "Giovanna,";
+    sh1.text = ""; lb1.text = "";
+    sh1.opacity = 1; lb1.opacity = 1;
+    function typeLine1() {
+      if (c1 >= full1.length) { k.wait(0.8, typeLine2); return; }
+      sh1.text = full1.slice(0, c1 + 1);
+      lb1.text = full1.slice(0, c1 + 1);
+      playTypingSound(); c1++;
+      k.wait(0.05, typeLine1);
+    }
+    typeLine1();
+
+    const sh2 = mkShadow("voce quer namorar comigo?", PROP_Y2, 11);
+    const lb2 = mkLabel ("voce quer namorar comigo?", PROP_Y2, 11, [255, 255, 255]);
+    sh2.text = ""; lb2.text = "";
+    sh2.opacity = 0; lb2.opacity = 0;
+
+    function typeLine2() {
+      sh2.opacity = 1; lb2.opacity = 1;
+      let c2 = 0; const full2 = "voce quer namorar comigo?";
+      function step() {
+        if (c2 >= full2.length) { k.wait(0.5, showButtons.bind(null, lb1, sh1, lb2, sh2)); return; }
+        sh2.text = full2.slice(0, c2 + 1);
+        lb2.text = full2.slice(0, c2 + 1);
+        playTypingSound(); c2++;
+        k.wait(0.045, step);
+      }
+      step();
+    }
+
+    function showButtons(l1, s1, l2, s2) {
+      // Botão SIM
+      const simBtn = k.add([k.rect(140 * SC, 50 * SC, { radius: 10 * SC }), k.pos(SW / 2 - 90 * SC, SH * 0.64), k.anchor("center"), k.color(60, 180, 80), k.scale(0), k.area(), k.z(40), k.fixed()]);
+      const simLbl = k.add([k.text("SIM 💛", { size: fs(11), font: "pressstart2p", align: "center" }), k.pos(SW / 2 - 90 * SC, SH * 0.64), k.anchor("center"), k.color(255, 255, 255), k.scale(0), k.z(41), k.fixed()]);
+      k.tween(0, 1, 0.25, v => { simBtn.scale.x = v; simBtn.scale.y = v; simLbl.scale.x = v; simLbl.scale.y = v; });
+
+      // Botão NÃO
+      let naoClicks = 0;
+      const naoBtn = k.add([k.rect(140 * SC, 50 * SC, { radius: 10 * SC }), k.pos(SW / 2 + 90 * SC, SH * 0.64), k.anchor("center"), k.color(200, 60, 60), k.scale(0), k.area(), k.z(40), k.fixed()]);
+      const naoLbl = k.add([k.text("NAO", { size: fs(11), font: "pressstart2p", align: "center" }), k.pos(SW / 2 + 90 * SC, SH * 0.64), k.anchor("center"), k.color(255, 255, 255), k.scale(0), k.z(41), k.fixed()]);
+      k.wait(0.1, () => {
+        k.tween(0, 1, 0.25, v => { naoBtn.scale.x = v; naoBtn.scale.y = v; naoLbl.scale.x = v; naoLbl.scale.y = v; });
+      });
+
+      simBtn.onHover(() => { simBtn.color = k.rgb(80, 210, 100); document.body.style.cursor = "pointer"; });
+      simBtn.onHoverEnd(() => { simBtn.color = k.rgb(60, 180, 80); document.body.style.cursor = "default"; });
+
+      naoBtn.onHover(() => { naoBtn.color = k.rgb(230, 80, 80); document.body.style.cursor = "pointer"; });
+      naoBtn.onHoverEnd(() => { naoBtn.color = k.rgb(200, 60, 60); document.body.style.cursor = "default"; });
+
+      const MARGIN = 40 * SC;
+      const naoMsgs  = ["Tem certeza...?", "Pensa bem...", "Realmente???", "Nao faz isso...", "Socorro!", "Para!!!", "Nao é assim!", "Por favor...", "NAOOOOO"];
+      const btnLabels = ["NAO", "Certeza?", "Hmm...", "Nao...", "Nao!", "PARA!", "NAO!!!", "POR FAVOR", "NAOOOOO"];
+
+      function safeNaoPos() {
+        const bx = k.rand(MARGIN, SW - MARGIN - naoBtn.width * naoBtn.scale.x);
+        const by = k.rand(MARGIN, SH - MARGIN - naoBtn.height * naoBtn.scale.y);
+        // evita sobrepor o SIM
+        if (Math.abs(bx - simBtn.pos.x) < 120 * SC && Math.abs(by - simBtn.pos.y) < 60 * SC) return safeNaoPos();
+        return { x: bx, y: by };
+      }
+
+      naoBtn.onClick(() => {
+        naoClicks++;
+        const msgIdx = Math.min(naoClicks - 1, naoMsgs.length - 1);
+        floatMsg(naoMsgs[msgIdx], [255, 220, 80]);
+        naoLbl.text = btnLabels[Math.min(naoClicks, btnLabels.length - 1)];
+
+        if (naoClicks >= 3) playEscape();
+
+        const pos = safeNaoPos();
+        if (naoClicks <= 4) {
+          const dur = [0.6, 0.5, 0.35, 0.25][naoClicks - 1] ?? 0.25;
+          if (naoClicks === 2) naoBtn.angle = 180;
+          if (naoClicks === 3) { naoBtn.scale.x = 0.85; naoBtn.scale.y = 0.85; naoLbl.scale.x = 0.85; naoLbl.scale.y = 0.85; }
+          if (naoClicks === 4) {
+            let blinks = 0;
+            const bl = k.loop(0.08, () => { naoBtn.hidden = !naoBtn.hidden; naoLbl.hidden = !naoLbl.hidden; if (++blinks >= 6) { bl.cancel(); naoBtn.hidden = false; naoLbl.hidden = false; k.tween(naoBtn.pos.x, pos.x, dur, v => { naoBtn.pos.x = v; naoLbl.pos.x = v; }); k.tween(naoBtn.pos.y, pos.y, dur, v => { naoBtn.pos.y = v; naoLbl.pos.y = v; }); } });
+            return;
+          }
+          k.tween(naoBtn.pos.x, pos.x, dur, v => { naoBtn.pos.x = v; naoLbl.pos.x = v; });
+          k.tween(naoBtn.pos.y, pos.y, dur, v => { naoBtn.pos.y = v; naoLbl.pos.y = v; });
+        } else {
+          // Teleporte caótico
+          const ang = k.rand(-45, 45);
+          const sc  = k.rand(0.5, 0.8);
+          naoBtn.pos.x = pos.x; naoBtn.pos.y = pos.y;
+          naoLbl.pos.x = pos.x; naoLbl.pos.y = pos.y;
+          naoBtn.angle = ang;   naoLbl.angle = ang;
+          naoBtn.scale.x = sc;  naoBtn.scale.y = sc;
+          naoLbl.scale.x = sc;  naoLbl.scale.y = sc;
+        }
+      });
+
+      // ── Confirmar SIM ────────────────────────────────────────────────────
+      simBtn.onClick(() => {
+        document.body.style.cursor = "default";
+        sceneEnded = true;
+        if (melodyHandle) melodyHandle.cancel();
+        playConfirm();
+
+        // Esconde NÃO
+        naoBtn.destroy(); naoLbl.destroy();
+
+        // SIM cresce e some
+        k.tween(1, 1.3, 0.3, v => { simBtn.scale.x = v; simBtn.scale.y = v; simLbl.scale.x = v; simLbl.scale.y = v; });
+        k.wait(0.32, () => k.tween(1, 0, 0.3, v => { simBtn.opacity = v; simLbl.opacity = v; }));
+
+        // Pergunta some
+        [l1, s1, l2, s2].forEach(o => { if (o.exists()) k.tween(1, 0, 0.4, v => { o.opacity = v; }); });
+
+        // Personagens se olham
+        vivi.play("idle-right"); gigi.play("idle-left");
+
+        // Partículas de coração
+        const EMOJIS = ["💛", "❤️", "✨"];
+        for (let i = 0; i < 12; i++) {
+          const angle = (i / 12) * Math.PI * 2 + k.rand(-0.3, 0.3);
+          const speed = k.rand(80, 160) * SC;
+          const p = k.add([
+            k.text(EMOJIS[i % EMOJIS.length], { size: fs(k.rand(10, 18)) }),
+            k.pos(SW / 2, SH * 0.55), k.anchor("center"),
+            k.opacity(1), k.z(50), k.fixed(),
+            { vx: Math.cos(angle) * speed, vy: -Math.abs(Math.sin(angle) * speed) - 30 * SC },
+          ]);
+          p.onUpdate(() => {
+            p.pos.x += p.vx * k.dt();
+            p.pos.y += p.vy * k.dt();
+            p.vy    += 120 * SC * k.dt();
+          });
+          k.tween(1, 0, 1.2, v => { p.opacity = v; });
+          k.wait(1.25, () => { if (p.exists()) p.destroy(); });
+        }
+
+        // Fade e transição
+        k.wait(1.5, () => {
+          const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(70), k.fixed()]);
+          k.tween(0, 1, 1.0, v => { fade.opacity = v; }).onEnd(() => {
+            try { k.go("fogos"); } catch (e) { k.go("menu"); }
+          });
+        });
+      });
+    }
+  }
 });
 
 // ── Cena: CONFIGURAÇÕES ──────────────────────────────────────────────────

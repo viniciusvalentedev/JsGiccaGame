@@ -106,7 +106,7 @@ k.loadSprite("obs_ciclista", "sprites/obs_ciclista.png", {
 let controlMode = window.matchMedia("(pointer: coarse)").matches ? "joystick" : "keyboard";
 
 const messages = [
-  { text: "Momoris",                          time: 0  },
+  { text: "Momores",                          time: 0  },
   { text: "Criado com muito amor por Vivi",        time: 7  },
   { text: "Comemorando 4 anos",                    time: 15 },
   { text: "dos melhores momentos da minha vida",   time: 21 },
@@ -127,6 +127,7 @@ let volumeGeral   = 1.0;
 let volumeEfeitos = 1.0;
 let volumeMusica  = 1.0;
 function getEffectsVolume() { return volumeGeral * volumeEfeitos; }
+function getMusicVolume()   { return volumeGeral * volumeMusica; }
 
 // ── Joystick Virtual ─────────────────────────────────────────────────────
 // getBlocked: () => bool — retorna true quando o input deve ser ignorado
@@ -529,7 +530,7 @@ function abrirCreditos() {
   const sep3 = add(k.add([k.rect(CW * 0.85, 2*SC), k.pos(SW/2, 0), k.anchor("center"), k.color(240,110,160), k.z(92), k.fixed()]));
   addContent(sep3, 16*SC);
 
-  const footer = add(k.add([k.text("Momoris Gigica © 2025\n4 anos de amor 💕", { size: fs(6), font: "pressstart2p", align: "center", width: CW - 28*SC }), k.pos(SW/2, 0), k.anchor("center"), k.color(160,100,140), k.z(92), k.fixed()]));
+  const footer = add(k.add([k.text("Momores Gigica © 2026\n4 anos de amor 💕", { size: fs(6), font: "pressstart2p", align: "center", width: CW - 28*SC }), k.pos(SW/2, 0), k.anchor("center"), k.color(160,100,140), k.z(92), k.fixed()]));
   addContent(footer, 32*SC);
 
   const totalContentH = relY;
@@ -563,6 +564,57 @@ function abrirCreditos() {
 
 // ── Cena: MENU ───────────────────────────────────────────────────────────
 k.scene("menu", () => {
+  // ── Áudio do menu ──────────────────────────────────────────────────────────
+  let menuActx = null;
+  function menuCtx() { if (!menuActx) menuActx = new (window.AudioContext || window.webkitAudioContext)(); return menuActx; }
+  function playHover() {
+    try {
+      const c = menuCtx(), o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = "sine"; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.06 * getEffectsVolume(), c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.07);
+      o.start(); o.stop(c.currentTime + 0.08);
+    } catch (e) {}
+  }
+  function playClick() {
+    try {
+      const c = menuCtx(), o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = "triangle"; o.frequency.value = 440;
+      o.frequency.exponentialRampToValueAtTime(880, c.currentTime + 0.10);
+      g.gain.setValueAtTime(0.10 * getEffectsVolume(), c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + 0.12);
+      o.start(); o.stop(c.currentTime + 0.13);
+    } catch (e) {}
+  }
+  try {
+    const bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = getMusicVolume() * 0.18;
+    bgmGain.connect(bgmCtx.destination);
+    const NOTES = [523,0,659,784,880,784,659,0,523,587,698,880,784,659,523,0];
+    const DUR = 0.15;
+    let bgmIdx = 0, bgmTimer = 0;
+    k.onUpdate(() => {
+      bgmTimer += k.dt();
+      if (bgmTimer >= DUR) {
+        bgmTimer = 0;
+        const f = NOTES[bgmIdx % NOTES.length]; bgmIdx++;
+        if (f > 0) {
+          try {
+            const o = bgmCtx.createOscillator(), g = bgmCtx.createGain();
+            o.connect(g); g.connect(bgmGain);
+            o.type = "triangle"; o.frequency.value = f;
+            g.gain.setValueAtTime(1, bgmCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + DUR * 0.9);
+            o.start(bgmCtx.currentTime); o.stop(bgmCtx.currentTime + DUR * 0.9);
+          } catch (e) {}
+        }
+      }
+    });
+  } catch (e) {}
+
   const TILE  = 16;
   const SCALE = 2;
   const TSIZE = TILE * SCALE;
@@ -631,7 +683,7 @@ k.scene("menu", () => {
 
   // Título principal
   k.add([
-    k.text("Momoris\nGigica", { size: fs(22), font: "pressstart2p", align: "center", width: SW * 0.55 }),
+    k.text("Momores\nGigica", { size: fs(22), font: "pressstart2p", align: "center", width: SW * 0.55 }),
     k.pos(SW / 2, SH * 0.22),
     k.anchor("center"),
     k.color(170, 28, 88),
@@ -667,12 +719,13 @@ k.scene("menu", () => {
   startBtn.onHover(() => {
     startBtn.color = k.rgb(255, 75, 130);
     document.body.style.cursor = "pointer";
+    playHover();
   });
   startBtn.onHoverEnd(() => {
     startBtn.color = k.rgb(250, 115, 162);
     document.body.style.cursor = "default";
   });
-  startBtn.onClick(() => { k.go("abertura"); });
+  startBtn.onClick(() => { playClick(); k.go("abertura"); });
 
   // Botão Selecionar Fase
   const faseBtn = k.add([
@@ -693,12 +746,13 @@ k.scene("menu", () => {
   faseBtn.onHover(() => {
     faseBtn.color = k.rgb(255, 175, 60);
     document.body.style.cursor = "pointer";
+    playHover();
   });
   faseBtn.onHoverEnd(() => {
     faseBtn.color = k.rgb(250, 155, 80);
     document.body.style.cursor = "default";
   });
-  faseBtn.onClick(() => { k.go("selecionar_fase"); });
+  faseBtn.onClick(() => { playClick(); k.go("selecionar_fase"); });
 
   // Botão Selecionar Controles
   const ctrlBtn = k.add([
@@ -722,12 +776,14 @@ k.scene("menu", () => {
   ctrlBtn.onHover(() => {
     ctrlBtn.color = k.rgb(148, 78, 215);
     document.body.style.cursor = "pointer";
+    playHover();
   });
   ctrlBtn.onHoverEnd(() => {
     ctrlBtn.color = k.rgb(120, 58, 185);
     document.body.style.cursor = "default";
   });
   ctrlBtn.onClick(() => {
+    playClick();
     controlMode = controlMode === "keyboard" ? "joystick" : "keyboard";
     ctrlLabel.text = controlMode === "joystick" ? "Controles: Joystick" : "Controles: Teclado";
   });
@@ -743,9 +799,9 @@ k.scene("menu", () => {
     k.pos(SW - 18 * SC - 18 * SC, 18 * SC + 18 * SC), k.anchor("center"),
     k.z(9), k.fixed(),
   ]);
-  trofeuBtn.onHover(() => { trofeuBtn.color = k.rgb(210,160,60); document.body.style.cursor = "pointer"; });
+  trofeuBtn.onHover(() => { trofeuBtn.color = k.rgb(210,160,60); document.body.style.cursor = "pointer"; playHover(); });
   trofeuBtn.onHoverEnd(() => { trofeuBtn.color = k.rgb(180,130,40); document.body.style.cursor = "default"; });
-  trofeuBtn.onClick(() => { abrirRecompensas(); });
+  trofeuBtn.onClick(() => { playClick(); abrirRecompensas(); });
 
   // Botão configurações (canto superior esquerdo)
   const configBtn = k.add([
@@ -754,9 +810,9 @@ k.scene("menu", () => {
     k.color(80,80,100), k.area(), k.z(8), k.fixed(),
   ]);
   k.add([k.text("⚙", { size: fs(14) }), k.pos(18*SC + 18*SC, 18*SC + 18*SC), k.anchor("center"), k.z(9), k.fixed()]);
-  configBtn.onHover(() => { configBtn.color = k.rgb(110,110,130); document.body.style.cursor = "pointer"; });
+  configBtn.onHover(() => { configBtn.color = k.rgb(110,110,130); document.body.style.cursor = "pointer"; playHover(); });
   configBtn.onHoverEnd(() => { configBtn.color = k.rgb(80,80,100); document.body.style.cursor = "default"; });
-  configBtn.onClick(() => { document.body.style.cursor = "default"; k.go("configuracoes"); });
+  configBtn.onClick(() => { document.body.style.cursor = "default"; playClick(); k.go("configuracoes"); });
 });
 
 // ── Cena: ABERTURA (jogo principal) ──────────────────────────────────────
@@ -1145,6 +1201,34 @@ k.scene("missao1", () => {
       osc.stop(ctx.currentTime + 0.2);
     } catch (e) {}
   }
+
+  // ── Trilha sonora ──────────────────────────────────────────────────────────
+  try {
+    const bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = getMusicVolume() * 0.18;
+    bgmGain.connect(bgmCtx.destination);
+    const NOTES = [392,440,494,587,494,440,392,0,440,523,587,523,440,392,0,0];
+    const DUR = 0.44;
+    let bgmIdx = 0, bgmTimer = 0;
+    k.onUpdate(() => {
+      bgmTimer += k.dt();
+      if (bgmTimer >= DUR) {
+        bgmTimer = 0;
+        const f = NOTES[bgmIdx % NOTES.length]; bgmIdx++;
+        if (f > 0) {
+          try {
+            const o = bgmCtx.createOscillator(), g = bgmCtx.createGain();
+            o.connect(g); g.connect(bgmGain);
+            o.type = "triangle"; o.frequency.value = f;
+            g.gain.setValueAtTime(1, bgmCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + DUR * 0.9);
+            o.start(bgmCtx.currentTime); o.stop(bgmCtx.currentTime + DUR * 0.9);
+          } catch (e) {}
+        }
+      }
+    });
+  } catch (e) {}
 
   // ── HUD flores ───────────────────────────────────────────────────────
   const hudShadow = k.add([
@@ -1750,10 +1834,42 @@ k.scene("selecionar_fase", () => {
     ]);
   }
 
-  // Botão Voltar (sempre visível) — 42*SC abaixo da área de navegação
+  // Botão Mini-games — entre a área de navegação e o Voltar
+  const MINIGAMES_Y = SH / 2 + 124 * SC;
+  const miniBase  = [120, 80, 180];
+  const miniHover = [Math.min(255, miniBase[0] + 25), Math.min(255, miniBase[1] + 25), Math.min(255, miniBase[2] + 25)];
+  const minigamesBtn = k.add([
+    k.rect(230 * SC, 34 * SC, { radius: 10 * SC }),
+    k.pos(SW / 2, MINIGAMES_Y),
+    k.anchor("center"),
+    k.color(miniBase[0], miniBase[1], miniBase[2]),
+    k.area(),
+    k.z(6),
+  ]);
+  k.add([
+    k.text("Mini-games", { size: fs(9), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, MINIGAMES_Y),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+    k.z(7),
+  ]);
+  minigamesBtn.onHover(() => {
+    minigamesBtn.color = k.rgb(miniHover[0], miniHover[1], miniHover[2]);
+    document.body.style.cursor = "pointer";
+  });
+  minigamesBtn.onHoverEnd(() => {
+    minigamesBtn.color = k.rgb(miniBase[0], miniBase[1], miniBase[2]);
+    document.body.style.cursor = "default";
+  });
+  minigamesBtn.onClick(() => {
+    document.body.style.cursor = "default";
+    k.go("selecionar_minigame");
+  });
+
+  // Botão Voltar (sempre visível) — abaixo do botão Mini-games
   const voltarBtn = k.add([
     k.rect(230 * SC, 34 * SC, { radius: 10 * SC }),
-    k.pos(SW / 2, SH / 2 + 136 * SC),
+    k.pos(SW / 2, SH / 2 + 160 * SC),
     k.anchor("center"),
     k.color(130, 130, 145),
     k.area(),
@@ -1761,7 +1877,7 @@ k.scene("selecionar_fase", () => {
   ]);
   k.add([
     k.text("< Voltar", { size: fs(9), font: "pressstart2p", align: "center" }),
-    k.pos(SW / 2, SH / 2 + 136 * SC),
+    k.pos(SW / 2, SH / 2 + 160 * SC),
     k.anchor("center"),
     k.color(255, 255, 255),
     k.z(7),
@@ -2082,6 +2198,34 @@ k.scene("missao2", () => {
       osc.start(); osc.stop(ctx.currentTime + 0.3);
     } catch (e) {}
   }
+
+  // ── Trilha sonora ──────────────────────────────────────────────────────────
+  try {
+    const bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = getMusicVolume() * 0.18;
+    bgmGain.connect(bgmCtx.destination);
+    const NOTES = [523,523,659,784,659,523,587,659,784,880,784,659,523,587,659,523];
+    const DUR = 0.16;
+    let bgmIdx = 0, bgmTimer = 0;
+    k.onUpdate(() => {
+      bgmTimer += k.dt();
+      if (bgmTimer >= DUR) {
+        bgmTimer = 0;
+        const f = NOTES[bgmIdx % NOTES.length]; bgmIdx++;
+        if (f > 0) {
+          try {
+            const o = bgmCtx.createOscillator(), g = bgmCtx.createGain();
+            o.connect(g); g.connect(bgmGain);
+            o.type = "square"; o.frequency.value = f;
+            g.gain.setValueAtTime(1, bgmCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + DUR * 0.9);
+            o.start(bgmCtx.currentTime); o.stop(bgmCtx.currentTime + DUR * 0.9);
+          } catch (e) {}
+        }
+      }
+    });
+  } catch (e) {}
 
   // ── HUD ─────────────────────────────────────────────────────────────────
   k.add([
@@ -2495,6 +2639,34 @@ k.scene("missao3", () => {
     } catch (e) {}
   }
 
+  // ── Trilha sonora ──────────────────────────────────────────────────────────
+  try {
+    const bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = getMusicVolume() * 0.18;
+    bgmGain.connect(bgmCtx.destination);
+    const NOTES = [440,0,0,0,523,0,0,0,659,0,0,0,523,0,440,0];
+    const DUR = 0.50;
+    let bgmIdx = 0, bgmTimer = 0;
+    k.onUpdate(() => {
+      bgmTimer += k.dt();
+      if (bgmTimer >= DUR) {
+        bgmTimer = 0;
+        const f = NOTES[bgmIdx % NOTES.length]; bgmIdx++;
+        if (f > 0) {
+          try {
+            const o = bgmCtx.createOscillator(), g = bgmCtx.createGain();
+            o.connect(g); g.connect(bgmGain);
+            o.type = "sine"; o.frequency.value = f;
+            g.gain.setValueAtTime(1, bgmCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + DUR * 0.9);
+            o.start(bgmCtx.currentTime); o.stop(bgmCtx.currentTime + DUR * 0.9);
+          } catch (e) {}
+        }
+      }
+    });
+  } catch (e) {}
+
   // ── Fade de entrada ──────────────────────────────────────────────────────
   const entryFade = k.add([
     k.rect(SW, SH), k.pos(0, 0),
@@ -2808,6 +2980,34 @@ k.scene("missao4", () => {
       osc.start(); osc.stop(ctx.currentTime + 0.04);
     } catch (e) {}
   }
+
+  // ── Trilha sonora ──────────────────────────────────────────────────────────
+  try {
+    const bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = getMusicVolume() * 0.18;
+    bgmGain.connect(bgmCtx.destination);
+    const NOTES = [440,0,0,0,523,0,0,0,659,0,0,0,523,0,440,0];
+    const DUR = 0.50;
+    let bgmIdx = 0, bgmTimer = 0;
+    k.onUpdate(() => {
+      bgmTimer += k.dt();
+      if (bgmTimer >= DUR) {
+        bgmTimer = 0;
+        const f = NOTES[bgmIdx % NOTES.length]; bgmIdx++;
+        if (f > 0) {
+          try {
+            const o = bgmCtx.createOscillator(), g = bgmCtx.createGain();
+            o.connect(g); g.connect(bgmGain);
+            o.type = "sine"; o.frequency.value = f;
+            g.gain.setValueAtTime(1, bgmCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + DUR * 0.9);
+            o.start(bgmCtx.currentTime); o.stop(bgmCtx.currentTime + DUR * 0.9);
+          } catch (e) {}
+        }
+      }
+    });
+  } catch (e) {}
 
   // ── Cenário (o mesmo da missao3) ───────────────────────────────────────────
   addNightScenery();
@@ -3364,6 +3564,34 @@ k.scene("subida", () => {
     } catch (e) {}
   }
 
+  // ── Trilha sonora ──────────────────────────────────────────────────────────
+  try {
+    const bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = getMusicVolume() * 0.18;
+    bgmGain.connect(bgmCtx.destination);
+    const NOTES = [330,392,440,494,659,587,494,440,392,330,440,494,659,587,494,330];
+    const DUR = 0.12;
+    let bgmIdx = 0, bgmTimer = 0;
+    k.onUpdate(() => {
+      bgmTimer += k.dt();
+      if (bgmTimer >= DUR) {
+        bgmTimer = 0;
+        const f = NOTES[bgmIdx % NOTES.length]; bgmIdx++;
+        if (f > 0) {
+          try {
+            const o = bgmCtx.createOscillator(), g = bgmCtx.createGain();
+            o.connect(g); g.connect(bgmGain);
+            o.type = "sawtooth"; o.frequency.value = f;
+            g.gain.setValueAtTime(1, bgmCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + DUR * 0.9);
+            o.start(bgmCtx.currentTime); o.stop(bgmCtx.currentTime + DUR * 0.9);
+          } catch (e) {}
+        }
+      }
+    });
+  } catch (e) {}
+
   // ── Céu em degradê (dia → por do sol laranja) ─────────────────────────────
   const SKY_BANDS = 8;
   const bandH = GROUND_Y / SKY_BANDS;
@@ -3461,7 +3689,7 @@ k.scene("subida", () => {
   k.onMousePress("left", jump);   // toque na tela (touchToMouse) e clique
 
   // ── Velocidade do mundo (cresce com o tempo) ───────────────────────────────
-  const BASE_SPEED   = 240 * SC;
+  const BASE_SPEED   = 280 * SC;
   const SPEED_GROWTH =   9 * SC;   // por segundo
   const worldSpeed = () => BASE_SPEED + elapsed * SPEED_GROWTH;
 
@@ -3508,7 +3736,7 @@ k.scene("subida", () => {
     { sprite: "obs_galho",    scale: 9,   speedMul: 1.0, sound: null,   anim: null   },
     { sprite: "obs_cachorro", scale: 7,   speedMul: 1.0, sound: "bark", anim: "run"  },
     { sprite: "obs_acai",     scale: 10, speedMul: 1.0, sound: "pop",  anim: "ride" },
-    { sprite: "obs_ciclista", scale: 10,   speedMul: 1.7, sound: null,   anim: "ride" },
+    { sprite: "obs_ciclista", scale: 10,   speedMul: 1.5, sound: null,   anim: "ride" },
   ];
   function spawnObstacle() {
     const def = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
@@ -4493,6 +4721,7 @@ k.scene("fogos", () => {
 
 // ── Cena: DIÁLOGO ANTES DA BATALHA ───────────────────────────────────────
 k.scene("dialogo_batalha", () => {
+  let dialogIndex = 0, dialogActive = false;
 
   // fundo de grama
   const TILE = 16, TSCALE = 2, TSIZE = TILE * TSCALE;
@@ -4513,23 +4742,19 @@ k.scene("dialogo_batalha", () => {
   gigi.play("idle-left");
 
   // áudio de digitação
-  let actxD = null;
-  function getActxD() { if (!actxD) actxD = new (window.AudioContext || window.webkitAudioContext)(); return actxD; }
-  function playTyping() {
+  let actx = null;
+  function ctxA() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); return actx; }
+  function beep(freq, type, dur, vol) {
     try {
-      const ctx = getActxD(), o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination);
-      o.type = "square"; o.frequency.value = 800 + Math.random() * 400;
-      g.gain.setValueAtTime(0.05 * getEffectsVolume(), ctx.currentTime);
-      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.04);
-      o.start(); o.stop(ctx.currentTime + 0.04);
+      const c = ctxA(), o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type; o.frequency.value = freq;
+      g.gain.setValueAtTime(vol * getEffectsVolume(), c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.start(); o.stop(c.currentTime + dur);
     } catch (e) {}
   }
-
-  // estado do diálogo
-  let dialogIndex = 0, dialogActive = false;
-  let typingDone = false, arrowVisible = false, arrowTimer = 0;
-  let currentFullText = "", currentCharIdx = 0, typingHandle = null;
+  function playTypingSound() { beep(800 + Math.random() * 400, "square", 0.04, 0.05); }
 
   // caixa de diálogo
   const DW = 460 * SC, DH = 100 * SC;
@@ -4549,9 +4774,14 @@ k.scene("dialogo_batalha", () => {
   const dlgText   = k.add([k.text("", { size: fs(7), font: "pressstart2p", width: DW - 110 * SC, align: "left" }), k.pos(TEXT_X, DY - DH / 2 + 30 * SC), k.color(255, 245, 255), k.z(34), k.fixed()]);
   const dlgArrow  = k.add([k.text("▼", { size: fs(8), font: "pressstart2p" }), k.pos(SW / 2 + DW / 2 - 16 * SC, DY + DH / 2 - 14 * SC), k.color(255, 255, 255), k.opacity(0), k.z(34), k.fixed()]);
 
-  const dlgAll = [dlgBorder, dlgBg, prtBorder, prtFill, prtVivi, prtGigi, dlgName, dlgText, dlgArrow];
+  const dlgAll = [dlgBorder, dlgBg, prtBorder, prtFill, dlgName, dlgText, dlgArrow];
   function setDlgVis(v) { dlgAll.forEach(o => { o.hidden = !v; }); dialogActive = v; }
   setDlgVis(false);
+  prtVivi.hidden = true;
+  prtGigi.hidden = true;
+
+  let fullText = "", charIdx = 0, typingDone = false, typingHandle = null;
+  let arrowVisible = false, arrowTimer = 0;
 
   // linhas de diálogo
   const dialogs = [
@@ -4564,13 +4794,14 @@ k.scene("dialogo_batalha", () => {
     { speaker: "gigi", name: "Giovanna", text: "saaaiiiiiiiii" },
   ];
 
-  function typeText(fullText) {
-    currentFullText = fullText; currentCharIdx = 0; typingDone = false;
+  function typeText(t) {
+    fullText = t; charIdx = 0; typingDone = false;
     arrowVisible = false; arrowTimer = 0; dlgArrow.opacity = 0; dlgText.text = "";
     function step() {
-      if (currentCharIdx >= fullText.length) { typingDone = true; arrowVisible = true; return; }
-      dlgText.text = fullText.slice(0, currentCharIdx + 1);
-      playTyping(); currentCharIdx++;
+      if (charIdx >= t.length) { typingDone = true; arrowVisible = true; return; }
+      dlgText.text = t.slice(0, charIdx + 1);
+      playTypingSound();
+      charIdx++;
       typingHandle = k.wait(0.03, step);
     }
     step();
@@ -4589,7 +4820,7 @@ k.scene("dialogo_batalha", () => {
     if (!dialogActive) return;
     if (!typingDone) {
       if (typingHandle) { typingHandle.cancel(); typingHandle = null; }
-      dlgText.text = currentFullText; typingDone = true; arrowVisible = true;
+      dlgText.text = fullText; typingDone = true; arrowVisible = true;
       return;
     }
     arrowVisible = false; arrowTimer = 0; dlgArrow.opacity = 0;
@@ -5141,6 +5372,2007 @@ k.scene("minigame_beijo", () => {
   });
 });
 
+// ── Cena: CHALLENGE – O CAMPINHO (cópia de missao2, dificuldade aumentada) ─
+k.scene("challenge_campinho", () => {
+  const TILE     = 16;
+  const SCALE    = 2;
+  const TSIZE    = TILE * SCALE;   // 32px por tile
+  const MAP_COLS = 60;
+  const MAP_ROWS = 40;
+  const MAP_W    = MAP_COLS * TSIZE;  // 1920
+  const MAP_H    = MAP_ROWS * TSIZE;  // 1280
+  const SPEED    = 180;
+  const MARGIN   = 20;
+  const MID_COL  = MAP_COLS / 2;      // 30 — coluna divisória
+  const MID_X    = MID_COL * TSIZE;   // 960 — divide campo / área de lazer
+
+  // Dificuldade aumentada
+  const GOALS_TO_WIN  = 14;            // era 10
+  const BALL_SPEED_MUL = 1.6;          // velocidade da bola ×1.6
+  const GK_SPEED_MUL   = 1.5;          // velocidade do goleiro ×1.5
+  const GK_HITBOX_MUL  = 1.2;          // hitbox do goleiro +20%
+
+  // Campo de futebol em tiles (dentro da metade esquerda)
+  // Limites em pixels no espaço do mundo
+  const FL = 2 * TSIZE,  FR = 28 * TSIZE;   // col 2..28  → x 64..896
+  const FT = 2 * TSIZE,  FB = 38 * TSIZE;   // row 2..38  → y 64..1216
+  const GOAL_H    = 6 * TSIZE;               // 192px
+  const GOAL_MID  = (FT + FB) / 2;
+  const GT        = GOAL_MID - GOAL_H / 2;
+  const GB        = GOAL_MID + GOAL_H / 2;
+  const GOAL_DEPTH = 2 * TSIZE;              // 64px
+
+  let goals           = 0;
+  let goalLocked      = false;
+  let paused          = false;
+  let destroyPause    = null;
+  let phase           = "playing";  // "playing" | "mid5" | "cutscene" | "exit"
+  let lastFace        = "right";
+  const ballVel       = { x: 0, y: 0 };
+  let meetX           = 0;
+  let meetY           = 0;
+  let cutsceneStarted = false;
+  let cutsceneReached = false;
+  let exitTriggered   = false;
+
+  // ── Introdução cinemática ────────────────────────────────────────────────
+  let introFinished = false;
+
+  const introOverlay = k.add([
+    k.rect(SW, SH), k.pos(0, 0),
+    k.color(0, 0, 0), k.opacity(1),
+    k.z(90), k.fixed(),
+  ]);
+
+  const introText1 = k.add([
+    k.text("4 de março de 2022", { size: fs(14), font: "pressstart2p" }),
+    k.pos(SW / 2, SH / 2 - 30 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0),
+    k.z(91), k.fixed(),
+  ]);
+
+  const introText2 = k.add([
+    k.text("Associação Atlética Caldense", { size: fs(10), font: "pressstart2p", width: 380 * SC, align: "center" }),
+    k.pos(SW / 2, SH / 2 + 20 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0),
+    k.z(91), k.fixed(),
+  ]);
+
+  const introText3 = k.add([
+    k.text("Vivi estava jogando futebol e", { size: fs(10), font: "pressstart2p", width: 380 * SC, align: "center" }),
+    k.pos(SW / 2, SH / 2 - 20 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0),
+    k.z(91), k.fixed(),
+  ]);
+
+  const introText4 = k.add([
+    k.text("Gigi estava passeando", { size: fs(10), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH / 2 + 20 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0),
+    k.z(91), k.fixed(),
+  ]);
+
+  k.wait(0,    () => k.tween(0, 1, 0.8, v => { introText1.opacity = v; }));
+  k.wait(1.5,  () => k.tween(0, 1, 0.8, v => { introText2.opacity = v; }));
+  k.wait(5.0,  () => {
+    k.tween(1, 0, 0.6, v => { introText1.opacity = v; });
+    k.tween(1, 0, 0.6, v => { introText2.opacity = v; });
+  });
+  k.wait(6.5,  () => k.tween(0, 1, 0.8, v => { introText3.opacity = v; }));
+  k.wait(8.0,  () => k.tween(0, 1, 0.8, v => { introText4.opacity = v; }));
+  k.wait(12.0, () => {
+    k.tween(1, 0, 0.6, v => { introText3.opacity = v; });
+    k.tween(1, 0, 0.6, v => { introText4.opacity = v; });
+    k.tween(1, 0, 1.0, v => { introOverlay.opacity = v; });
+  });
+  k.wait(13.5, () => {
+    if (introOverlay.exists()) introOverlay.destroy();
+    if (introText1.exists())   introText1.destroy();
+    if (introText2.exists())   introText2.destroy();
+    if (introText3.exists())   introText3.destroy();
+    if (introText4.exists())   introText4.destroy();
+    introFinished = true;
+  });
+
+  // ── Joystick virtual ─────────────────────────────────────────────────────
+  const joystick = controlMode === "joystick"
+    ? makeVirtualJoystick(() => paused || phase !== "playing")
+    : null;
+
+  // ── Mundo ────────────────────────────────────────────────────────────────
+  const world = k.add([k.pos(0, 0)]);
+
+  // ── Tilemap com scenario_tiles ────────────────────────────────────────────
+  const MID_ROW   = Math.floor(MAP_ROWS / 2);  // 20
+  const MID_FIELD_COL = Math.floor(MID_COL / 2);  // 15 — meio do campo
+
+  // Cols e rows da piscina (em tiles, dentro da metade direita)
+  const POOL_COL_START = MID_COL + 4;   // col 34
+  const POOL_COL_END   = MID_COL + 10;  // col 40
+  const POOL_ROW_START = 14;
+  const POOL_ROW_END   = 20;
+
+  const waterTiles = [];  // referências para animar
+
+  for (let row = 0; row < MAP_ROWS; row++) {
+    for (let col = 0; col < MAP_COLS; col++) {
+      const isRight = col >= MID_COL;
+      const isPool  = isRight
+        && col >= POOL_COL_START && col < POOL_COL_END
+        && row >= POOL_ROW_START && row < POOL_ROW_END;
+
+      let frame;
+      if (isPool) {
+        frame = (col + row) % 2 === 0 ? 6 : 7;
+      } else if (!isRight) {
+        // Campo de futebol
+        const isMidRow = row === MID_ROW;
+        const isMidCol = col === MID_FIELD_COL;
+        if (isMidRow && isMidCol) frame = 3;
+        else if (isMidRow)        frame = 1;
+        else if (isMidCol)        frame = 2;
+        else                      frame = 0;
+      } else {
+        // Área de lazer — xadrez bege
+        frame = (col + row) % 2 === 0 ? 4 : 5;
+      }
+
+      const tile = world.add([
+        k.sprite("scenario_tiles", { frame }),
+        k.pos(col * TSIZE, row * TSIZE),
+        k.scale(SCALE),
+        k.z(0),
+      ]);
+      if (isPool) waterTiles.push(tile);
+    }
+  }
+
+  // Anima tiles de água alternando frame 6/7 a cada 0.5s
+  let waterFrame = 0;
+  k.loop(0.5, () => {
+    waterFrame = waterFrame === 0 ? 1 : 0;
+    waterTiles.forEach(t => { t.frame = waterFrame === 0 ? 6 : 7; });
+  });
+
+  // ── Marcações do campo (rects sobre o tilemap) ────────────────────────────
+  const addLine = (x, y, w, h) => world.add([
+    k.rect(w, h), k.pos(x, y),
+    k.color(255, 255, 255), k.opacity(0.45), k.z(1),
+  ]);
+  // Borda do campo
+  addLine(FL, FT, FR - FL, 3);
+  addLine(FL, FB, FR - FL, 3);
+  addLine(FL, FT, 3, FB - FT);
+  addLine(FR, FT, 3, FB - FT);
+
+  // Gol esquerdo (vermelho – NPC defende a goleira de Vivi)
+  world.add([k.rect(GOAL_DEPTH, GOAL_H), k.pos(FL - GOAL_DEPTH, GT), k.color(220, 60, 60), k.opacity(0.55), k.z(1)]);
+  addLine(FL - GOAL_DEPTH, GT, GOAL_DEPTH, 3);
+  addLine(FL - GOAL_DEPTH, GB, GOAL_DEPTH, 3);
+
+  // Gol direito (azul – Vivi tenta marcar aqui)
+  world.add([k.rect(GOAL_DEPTH, GOAL_H), k.pos(FR, GT), k.color(60, 90, 220), k.opacity(0.55), k.z(1)]);
+  addLine(FR, GT, GOAL_DEPTH, 3);
+  addLine(FR, GB, GOAL_DEPTH, 3);
+
+  // Círculo central
+  world.add([
+    k.circle(3 * TSIZE), k.pos((FL + FR) / 2, GOAL_MID), k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0.08), k.z(1),
+  ]);
+
+  // ── Bola ─────────────────────────────────────────────────────────────────
+  const BALL_START_X = (FL + FR) / 2;
+  const ball = world.add([
+    k.sprite("ball"),
+    k.pos(BALL_START_X, GOAL_MID),
+    k.anchor("center"),
+    k.scale(4),
+    k.z(4),
+  ]);
+  ball.play("spin");
+
+  // ── Player (Vivi) ─────────────────────────────────────────────────────────
+  const START_X = FL + (FR - FL) * 0.25;
+  const vivi = world.add([
+    k.sprite("vivi"),
+    k.pos(START_X, GOAL_MID),
+    k.anchor("center"), k.scale(8), k.z(2),
+  ]);
+  vivi.play("idle-right");
+
+  // ── NPC adversário ────────────────────────────────────────────────────────
+  const npcMan = world.add([
+    k.sprite("npc_man"),
+    k.pos(FR - 4 * TSIZE, GOAL_MID),
+    k.anchor("center"), k.scale(8 * GK_HITBOX_MUL), k.z(2),
+  ]);
+  npcMan.play("idle-left");
+  let npcJitter = 0;
+
+  // ── Gigi (passeando na área de lazer) ─────────────────────────────────────
+  const POOL_WORLD_Y = POOL_ROW_START * TSIZE;
+  const gigiNpc = world.add([
+    k.sprite("gigi"),
+    k.pos(MID_X + 8 * TSIZE, POOL_WORLD_Y - 2 * TSIZE),
+    k.anchor("center"), k.scale(2.2), k.z(2),
+  ]);
+  gigiNpc.play("walk-right");
+  let gigiDir = 1, gigiTimer = k.rand(2, 4);
+
+  // ── NPC Woman (passeando na área de lazer) ────────────────────────────────
+  const WATCH_POS_X = MID_X + TSIZE;
+  let watchingField = false;
+  const npcWoman = world.add([
+    k.sprite("npc_woman"),
+    k.pos(MID_X + 16 * TSIZE, POOL_WORLD_Y + 3 * TSIZE),
+    k.anchor("center"), k.scale(8), k.z(2),
+  ]);
+  npcWoman.play("walk-left");
+  let womanDir = -1, womanTimer = k.rand(2, 4);
+
+  // Posição inicial da câmera
+  world.pos.x = Math.min(0, Math.max(SW - MAP_W, SW / 2 - START_X));
+  world.pos.y = Math.min(0, Math.max(SH - MAP_H, SH / 2 - GOAL_MID));
+
+  // ── Fade overlay (cinemática final) ──────────────────────────────────────
+  const fadeOverlay = k.add([
+    k.rect(SW, SH), k.pos(0, 0),
+    k.color(0, 0, 0), k.opacity(0),
+    k.z(80), k.fixed(),
+  ]);
+
+  // ── Áudio ────────────────────────────────────────────────────────────────
+  let audioCtx = null;
+  const getAudioCtx = () => {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx;
+  };
+  function playGoalSound() {
+    try {
+      const ctx = getAudioCtx();
+      [440, 550, 660, 880].forEach((freq, i) => {
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = "sine"; osc.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.12;
+        gain.gain.setValueAtTime(0.22 * getEffectsVolume(), t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+        osc.start(t); osc.stop(t + 0.22);
+      });
+    } catch (e) {}
+  }
+  function playNpcGoalSound() {
+    try {
+      const ctx = getAudioCtx(), osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(220, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(110, ctx.currentTime + 0.5);
+      gain.gain.setValueAtTime(0.3 * getEffectsVolume(), ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+      osc.start(); osc.stop(ctx.currentTime + 0.5);
+    } catch (e) {}
+  }
+  function playWhistle() {
+    try {
+      const ctx = getAudioCtx(), osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(1200, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(900, ctx.currentTime + 0.3);
+      gain.gain.setValueAtTime(0.28 * getEffectsVolume(), ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+      osc.start(); osc.stop(ctx.currentTime + 0.3);
+    } catch (e) {}
+  }
+
+  // ── Trilha sonora ──────────────────────────────────────────────────────────
+  try {
+    const bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = getMusicVolume() * 0.18;
+    bgmGain.connect(bgmCtx.destination);
+    const NOTES = [523,523,659,784,659,523,587,659,784,880,784,659,523,587,659,523];
+    const DUR = 0.16;
+    let bgmIdx = 0, bgmTimer = 0;
+    k.onUpdate(() => {
+      bgmTimer += k.dt();
+      if (bgmTimer >= DUR) {
+        bgmTimer = 0;
+        const f = NOTES[bgmIdx % NOTES.length]; bgmIdx++;
+        if (f > 0) {
+          try {
+            const o = bgmCtx.createOscillator(), g = bgmCtx.createGain();
+            o.connect(g); g.connect(bgmGain);
+            o.type = "square"; o.frequency.value = f;
+            g.gain.setValueAtTime(1, bgmCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + DUR * 0.9);
+            o.start(bgmCtx.currentTime); o.stop(bgmCtx.currentTime + DUR * 0.9);
+          } catch (e) {}
+        }
+      }
+    });
+  } catch (e) {}
+
+  // ── HUD ─────────────────────────────────────────────────────────────────
+  k.add([
+    k.rect(168 * SC, 30 * SC, { radius: 6 * SC }),
+    k.pos(8 * SC, 8 * SC),
+    k.color(0, 0, 0), k.opacity(0.55), k.z(20), k.fixed(),
+  ]);
+  const hudShadow = k.add([
+    k.text(`Gols: 0/${GOALS_TO_WIN}`, { size: fs(10), font: "pressstart2p" }),
+    k.pos(13 * SC + 1, 15 * SC + 1),
+    k.color(0, 0, 0), k.opacity(0.7), k.z(20), k.fixed(),
+  ]);
+  const hudLabel = k.add([
+    k.text(`Gols: 0/${GOALS_TO_WIN}`, { size: fs(10), font: "pressstart2p" }),
+    k.pos(13 * SC, 15 * SC),
+    k.color(255, 255, 255), k.z(21), k.fixed(),
+  ]);
+  function updateHUD() {
+    hudLabel.text  = `Gols: ${goals}/${GOALS_TO_WIN}`;
+    hudShadow.text = `Gols: ${goals}/${GOALS_TO_WIN}`;
+  }
+
+  // ── Texto objetivo ────────────────────────────────────────────────────────
+  const missionObjShadow = k.add([
+    k.text("Faça gols para impressionar ela", { size: fs(10), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2 + 2 * SC, SH - 16 * SC),
+    k.anchor("center"), k.color(0, 0, 0), k.opacity(0), k.z(19), k.fixed(),
+  ]);
+  const missionObj = k.add([
+    k.text("Faça gols para impressionar ela", { size: fs(10), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH - 18 * SC),
+    k.anchor("center"), k.color(255, 215, 0), k.opacity(0), k.z(20), k.fixed(),
+  ]);
+  k.wait(13.5, () => k.tween(0, 1, 0.8, v => { missionObj.opacity = v; missionObjShadow.opacity = v; }));
+  k.wait(17.5, () => k.tween(1, 0, 0.8, v => { missionObj.opacity = v; missionObjShadow.opacity = v; }));
+
+  // ── Balão de fala ────────────────────────────────────────────────────────
+  function showBubble(worldObj, text, duration) {
+    const bg = k.add([
+      k.rect(200 * SC, 40 * SC, { radius: 7 * SC }),
+      k.pos(0, 0), k.anchor("center"),
+      k.color(255, 255, 255), k.opacity(0.93), k.z(50), k.fixed(),
+    ]);
+    const txt = k.add([
+      k.text(text, { size: fs(7), font: "pressstart2p", align: "center", width: 185 * SC }),
+      k.pos(0, 0), k.anchor("center"),
+      k.color(20, 20, 20), k.z(51), k.fixed(),
+    ]);
+    const tick = k.onUpdate(() => {
+      if (!worldObj.exists()) return;
+      const sx = worldObj.pos.x + world.pos.x;
+      const sy = worldObj.pos.y + world.pos.y - 52 * SC;
+      bg.pos.x  = sx; bg.pos.y  = sy;
+      txt.pos.x = sx; txt.pos.y = sy;
+    });
+    k.wait(duration ?? 3, () => {
+      tick.cancel();
+      k.tween(0.93, 0, 0.3, v => { bg.opacity = v; txt.opacity = v; },
+        () => { if (bg.exists()) bg.destroy(); if (txt.exists()) txt.destroy(); });
+    });
+  }
+
+  // ── Reset bola e personagens ao centro ───────────────────────────────────
+  function resetToCenter() {
+    ball.pos.x  = BALL_START_X;
+    ball.pos.y  = GOAL_MID;
+    ballVel.x   = 0;
+    ballVel.y   = 0;
+    vivi.pos.x  = START_X;
+    vivi.pos.y  = GOAL_MID;
+    npcMan.pos.x = FR - 4 * TSIZE;
+    npcMan.pos.y = GOAL_MID;
+    vivi.play("idle-right");
+    npcMan.play("idle-left");
+  }
+
+  // ── Gol marcado pelo Vivi (goleira direita) ───────────────────────────────
+  function onViviGoal() {
+    if (goalLocked) return;
+    goalLocked = true;
+    goals++;
+    updateHUD();
+    playWhistle();
+    playGoalSound();
+    showBubble(vivi, "GOL!", 2.5);
+
+    if (goals >= GOALS_TO_WIN) {
+      phase           = "cutscene";
+      cutsceneStarted = false;
+      cutsceneReached = false;
+      meetX           = gigiNpc.pos.x - 3 * TSIZE;
+      meetY           = gigiNpc.pos.y;
+      vivi.play("idle-right");
+      // Delay de 1s para o som de gol terminar antes de Vivi começar a andar
+      k.wait(1, () => { cutsceneStarted = true; });
+    } else if (goals === 5) {
+      phase = "mid5";
+      watchingField = true;
+      showBubble(gigiNpc, "Olha so que golaço!", 3);
+      k.wait(0.9, () => { showBubble(npcWoman, "Vai, Vivi! ♥", 3); });
+      k.wait(1, () => { resetToCenter(); });
+      k.wait(4, () => { phase = "playing"; goalLocked = false; });
+    } else {
+      k.wait(1, () => { resetToCenter(); goalLocked = false; });
+    }
+  }
+
+  // ── Gol marcado pelo NPC (goleira esquerda) ───────────────────────────────
+  function onNpcGoal() {
+    if (goalLocked) return;
+    goalLocked = true;
+    goals = Math.max(0, goals - 1);
+    updateHUD();
+    playWhistle();
+    playNpcGoalSound();
+    showBubble(npcMan, "Ponto pra mim!", 2.5);
+    k.wait(1, () => { resetToCenter(); goalLocked = false; });
+  }
+
+  // ── Pause ────────────────────────────────────────────────────────────────
+  k.onKeyPress("escape", () => {
+    if (phase === "cutscene" || phase === "exit") return;
+    if (paused) {
+      if (destroyPause) { destroyPause(); destroyPause = null; }
+      paused = false;
+    } else {
+      paused = true;
+      destroyPause = makePauseOverlay(() => {
+        paused = false; destroyPause = null;
+        document.body.style.cursor = "default";
+      });
+    }
+  });
+
+  // ── Loop principal ───────────────────────────────────────────────────────
+  k.onUpdate(() => {
+    if (!introFinished) return;
+    if (paused) return;
+    const dt = k.dt();
+
+    // Movimento do player
+    if (phase === "playing") {
+      let dx = 0, dy = 0;
+      if (controlMode === "keyboard") {
+        if (k.isKeyDown("left")  || k.isKeyDown("a")) dx = -1;
+        if (k.isKeyDown("right") || k.isKeyDown("d")) dx =  1;
+        if (k.isKeyDown("up")    || k.isKeyDown("w")) dy = -1;
+        if (k.isKeyDown("down")  || k.isKeyDown("s")) dy =  1;
+      }
+      if (joystick) {
+        joystick.tick();
+        if (joystick.isActive()) {
+          const { x: jx, y: jy } = joystick.getDir();
+          if (Math.abs(jx) > 0.15) dx = jx;
+          if (Math.abs(jy) > 0.15) dy = jy;
+        }
+      }
+
+      if (dx !== 0 || dy !== 0) {
+        const len = Math.hypot(dx, dy) || 1;
+        const ndx = dx / len, ndy = dy / len;
+        vivi.pos.x += ndx * SPEED * dt;
+        vivi.pos.y += ndy * SPEED * dt;
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          vivi.play(dx > 0 ? "walk-right" : "walk-left");
+          lastFace = dx > 0 ? "right" : "left";
+        } else {
+          vivi.play(dy > 0 ? "walk-down" : "walk-up");
+          lastFace = dy > 0 ? "down" : "up";
+        }
+        // Chutar bola se perto
+        if (Math.hypot(vivi.pos.x - ball.pos.x, vivi.pos.y - ball.pos.y) < 36) {
+          ballVel.x = ndx * 340 * BALL_SPEED_MUL;
+          ballVel.y = ndy * 340 * BALL_SPEED_MUL;
+        }
+      } else {
+        if (joystick) joystick.tick();
+        vivi.play("idle-" + lastFace);
+      }
+
+      // Limita Vivi à metade esquerda do mapa
+      vivi.pos.x = Math.max(MARGIN, Math.min(MID_X - MARGIN, vivi.pos.x));
+      vivi.pos.y = Math.max(MARGIN, Math.min(MAP_H - MARGIN, vivi.pos.y));
+    }
+
+    // Física da bola (roda em "playing" e "mid5")
+    if (phase === "playing" || phase === "mid5") {
+      if (!goalLocked) {
+        ball.pos.x += ballVel.x * dt;
+        ball.pos.y += ballVel.y * dt;
+      }
+      const frict = Math.pow(0.92, dt * 60);
+      ballVel.x  *= frict;
+      ballVel.y  *= frict;
+
+      // Paredes superior/inferior do campo
+      if (ball.pos.y < FT) { ball.pos.y = FT; ballVel.y *= -0.6; }
+      if (ball.pos.y > FB) { ball.pos.y = FB; ballVel.y *= -0.6; }
+
+      if (!goalLocked) {
+        // Parede esquerda — exceto abertura do gol esquerdo (NPC)
+        if (ball.pos.x < FL - GOAL_DEPTH) {
+          // Gol do NPC
+          if (ball.pos.y > GT && ball.pos.y < GB) {
+            onNpcGoal();
+          } else {
+            ball.pos.x = FL - GOAL_DEPTH; ballVel.x *= -0.5;
+          }
+        } else if (ball.pos.x < FL && (ball.pos.y < GT || ball.pos.y > GB)) {
+          ball.pos.x = FL; ballVel.x *= -0.5;
+        }
+
+        // Parede direita — exceto abertura do gol direito (Vivi)
+        if (ball.pos.x > FR + GOAL_DEPTH) {
+          // Gol do Vivi
+          if (ball.pos.y > GT && ball.pos.y < GB) {
+            onViviGoal();
+          } else {
+            ball.pos.x = FR + GOAL_DEPTH; ballVel.x *= -0.5;
+          }
+        } else if (ball.pos.x > FR && (ball.pos.y < GT || ball.pos.y > GB)) {
+          ball.pos.x = FR; ballVel.x *= -0.5;
+        }
+      }
+
+      // Impede bola de cruzar para a área de lazer
+      if (ball.pos.x > MID_X) { ball.pos.x = MID_X; ballVel.x *= -0.5; }
+
+      // ── IA do NPC ──────────────────────────────────────────────────────────
+      if (phase === "playing" && !goalLocked) {
+        npcJitter += dt;
+        const jX = Math.sin(npcJitter * 7.4) * 12;
+        const jY = Math.cos(npcJitter * 5.2) * 8;
+
+        const ballInNpcSide = ball.pos.x > (FL + FR) / 2;
+        let tgtX, tgtY;
+        if (ballInNpcSide) {
+          tgtX = ball.pos.x + jX;
+          tgtY = ball.pos.y + jY;
+        } else {
+          tgtX = (ball.pos.x + FL) / 2 + jX;
+          tgtY = ball.pos.y + jY;
+        }
+
+        const nnX = tgtX - npcMan.pos.x;
+        const nnY = tgtY - npcMan.pos.y;
+        const nd  = Math.hypot(nnX, nnY) || 1;
+        if (nd > 10) {
+          npcMan.pos.x += (nnX / nd) * 120 * GK_SPEED_MUL * dt;
+          npcMan.pos.y += (nnY / nd) * 120 * GK_SPEED_MUL * dt;
+          npcMan.play(nnX > 0 ? "walk-right" : "walk-left");
+        } else {
+          npcMan.play("idle-left");
+        }
+        npcMan.pos.x = Math.max(FL, Math.min(MID_X - MARGIN, npcMan.pos.x));
+        npcMan.pos.y = Math.max(FT, Math.min(FB, npcMan.pos.y));
+
+        // NPC chuta em direção ao gol esquerdo (goleira do Vivi) quando próximo
+        const npcBallDist = Math.hypot(npcMan.pos.x - ball.pos.x, npcMan.pos.y - ball.pos.y);
+        if (npcBallDist < 24 * GK_HITBOX_MUL) {
+          const aimX = FL - GOAL_DEPTH / 2;
+          const aimY = GOAL_MID + k.rand(-GOAL_H * 0.3, GOAL_H * 0.3);
+          const kd   = Math.hypot(aimX - ball.pos.x, aimY - ball.pos.y) || 1;
+          ballVel.x  = ((aimX - ball.pos.x) / kd) * 280 * BALL_SPEED_MUL;
+          ballVel.y  = ((aimY - ball.pos.y) / kd) * 280 * BALL_SPEED_MUL;
+        }
+      }
+    }
+
+    // ── Cinemática: Vivi caminha até Gigi ────────────────────────────────────
+    if (phase === "cutscene" && cutsceneStarted && !cutsceneReached) {
+      const cdx   = meetX - vivi.pos.x;
+      const cdy   = meetY - vivi.pos.y;
+      const cdist = Math.hypot(cdx, cdy);
+      if (cdist > 12) {
+        vivi.pos.x += (cdx / cdist) * 120 * dt;
+        vivi.pos.y += (cdy / cdist) * 120 * dt;
+        if (Math.abs(cdx) >= Math.abs(cdy)) {
+          vivi.play(cdx > 0 ? "walk-right" : "walk-left");
+        } else {
+          vivi.play(cdy > 0 ? "walk-down" : "walk-up");
+        }
+      } else {
+        cutsceneReached = true;
+        vivi.pos.x = meetX;
+        vivi.pos.y = meetY;
+        vivi.play("idle-right");
+        showBubble(vivi,    "Vamos lá",                    2.2);
+        k.wait(2.4,  () => { showBubble(gigiNpc,  "Onde? rs",                       2.2); });
+        k.wait(4.8,  () => { showBubble(npcWoman, "Para de ser boba,\nGiovanna!", 2.8); });
+        k.wait(7.8,  () => { showBubble(gigiNpc,  "Tá bom kkkk ❤️",                 2.2); });
+        k.wait(10.4, () => { phase = "exit"; });
+      }
+    }
+
+    // ── Saída: Vivi e Gigi caminham juntos para a direita ────────────────────
+    if (phase === "exit") {
+      vivi.pos.x    += 280 * dt;
+      gigiNpc.pos.x += 280 * dt;
+      vivi.play("walk-right");
+      gigiNpc.play("walk-right");
+      if (!exitTriggered && vivi.pos.x + world.pos.x > SW + 100) {
+        exitTriggered = true;
+        k.tween(0, 1, 1.2, v => { fadeOverlay.opacity = v; },
+          () => { k.go("menu"); });
+      }
+    }
+
+    // Gigi: passeando / indo ver o jogo (bloqueado durante cutscene e exit)
+    if (phase !== "cutscene" && phase !== "exit") {
+      if (watchingField) {
+        if (gigiNpc.pos.x > WATCH_POS_X + 4) {
+          gigiNpc.pos.x -= 65 * dt;
+          gigiNpc.play("walk-left");
+        } else {
+          gigiNpc.pos.x = WATCH_POS_X;
+          gigiNpc.play("idle-left");
+        }
+      } else {
+        gigiTimer -= dt;
+        if (gigiTimer <= 0) {
+          gigiDir   *= -1;
+          gigiTimer  = k.rand(2, 5);
+          gigiNpc.play(gigiDir > 0 ? "walk-right" : "walk-left");
+        }
+        gigiNpc.pos.x += gigiDir * 55 * dt;
+        gigiNpc.pos.x  = Math.max(MID_X + TSIZE, Math.min(MAP_W - 3 * TSIZE, gigiNpc.pos.x));
+      }
+    }
+
+    // NPC Woman: passeando / indo ver o jogo (fica parada durante cutscene e exit)
+    if (phase !== "cutscene" && phase !== "exit") {
+      if (watchingField) {
+        const wWatchX = WATCH_POS_X + 3 * TSIZE;
+        if (npcWoman.pos.x > wWatchX + 4) {
+          npcWoman.pos.x -= 50 * dt;
+          npcWoman.play("walk-left");
+        } else {
+          npcWoman.pos.x = wWatchX;
+          npcWoman.play("idle-left");
+        }
+      } else {
+        womanTimer -= dt;
+        if (womanTimer <= 0) {
+          womanDir   *= -1;
+          womanTimer  = k.rand(2, 4);
+          npcWoman.play(womanDir > 0 ? "walk-right" : "walk-left");
+        }
+        npcWoman.pos.x += womanDir * 45 * dt;
+        npcWoman.pos.x  = Math.max(MID_X + TSIZE, Math.min(MAP_W - 3 * TSIZE, npcWoman.pos.x));
+      }
+    }
+
+    // Câmera suave seguindo Vivi
+    const tgtX = Math.min(0, Math.max(SW - MAP_W, SW / 2 - vivi.pos.x));
+    const tgtY = Math.min(0, Math.max(SH - MAP_H, SH / 2 - vivi.pos.y));
+    world.pos.x = k.lerp(world.pos.x, tgtX, 8 * dt);
+    world.pos.y = k.lerp(world.pos.y, tgtY, 8 * dt);
+  });
+
+  k.onKeyRelease(() => {
+    if (!k.isKeyDown("left") && !k.isKeyDown("right") &&
+        !k.isKeyDown("up")   && !k.isKeyDown("down") &&
+        !k.isKeyDown("a")    && !k.isKeyDown("d") &&
+        !k.isKeyDown("w")    && !k.isKeyDown("s")) {
+      if (phase === "playing") vivi.play("idle-" + lastFace);
+    }
+  });
+});
+
+// ── Cena: CHALLENGE – A SINTONIA (cópia de missao4, dificuldade aumentada) ─
+k.scene("challenge_sintonia", () => {
+  // ── Dificuldade aumentada ──────────────────────────────────────────────────
+  const HITS_TO_WIN     = 20;    // era 15
+  const FALL_SPEED_MUL  = 1.6;   // velocidade de queda dos emojis ×1.6
+  const CLICK_WINDOW_MUL = 0.7;  // janela de clique reduzida em 30%
+  const BAD_CHANCE       = Math.min(0.95, 0.35 * 1.4);  // prob. de emoji ruim +40% (~0.49)
+
+  // ── Estado ───────────────────────────────────────────────────────────────
+  let acertos        = 0;
+  let erros          = 0;
+  let paused         = false;
+  let destroyPause   = null;
+  let gameEnded      = false;   // true ao vencer ou perder
+  let spawnLoop       = null;    // handle do k.loop (para cancelar)
+
+  // ── Áudio (Web Audio API) ─────────────────────────────────────────────────
+  let audioCtx4 = null;
+  function getAudioCtx4() {
+    if (!audioCtx4) audioCtx4 = new (window.AudioContext || window.webkitAudioContext)();
+    return audioCtx4;
+  }
+  function playHitSound() {
+    try {
+      const ctx = getAudioCtx4(), osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = "sine"; osc.frequency.value = 880;            // sino agudo e suave
+      gain.gain.setValueAtTime(0.2 * getEffectsVolume(), ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.15);
+      osc.start(); osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
+  }
+  function playErrorSound() {
+    try {
+      const ctx = getAudioCtx4(), osc = ctx.createOscillator(), gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = "square"; osc.frequency.value = 220;          // grave e seco
+      gain.gain.setValueAtTime(0.18 * getEffectsVolume(), ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      osc.start(); osc.stop(ctx.currentTime + 0.2);
+    } catch (e) {}
+  }
+  function playWinSound() {
+    try {
+      const ctx = getAudioCtx4();
+      [523, 659, 784, 1047].forEach((freq, i) => {            // acorde ascendente
+        const osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = "sine"; osc.frequency.value = freq;
+        const t = ctx.currentTime + i * 0.15;
+        gain.gain.setValueAtTime(0.25 * getEffectsVolume(), t);
+        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        osc.start(t); osc.stop(t + 0.3);
+      });
+    } catch (e) {}
+  }
+
+  // ── Trilha sonora ──────────────────────────────────────────────────────────
+  try {
+    const bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = getMusicVolume() * 0.18;
+    bgmGain.connect(bgmCtx.destination);
+    const NOTES = [440,0,0,0,523,0,0,0,659,0,0,0,523,0,440,0];
+    const DUR = 0.50;
+    let bgmIdx = 0, bgmTimer = 0;
+    k.onUpdate(() => {
+      bgmTimer += k.dt();
+      if (bgmTimer >= DUR) {
+        bgmTimer = 0;
+        const f = NOTES[bgmIdx % NOTES.length]; bgmIdx++;
+        if (f > 0) {
+          try {
+            const o = bgmCtx.createOscillator(), g = bgmCtx.createGain();
+            o.connect(g); g.connect(bgmGain);
+            o.type = "sine"; o.frequency.value = f;
+            g.gain.setValueAtTime(1, bgmCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + DUR * 0.9);
+            o.start(bgmCtx.currentTime); o.stop(bgmCtx.currentTime + DUR * 0.9);
+          } catch (e) {}
+        }
+      }
+    });
+  } catch (e) {}
+
+  // ── Cenário (o mesmo da missao3) ───────────────────────────────────────────
+  addNightScenery();
+
+  // ── Vivi e Gigi: decorativos, parados no canto inferior, atrás dos emojis ──
+  const CHAR_Y = SH * 0.72;
+  const vivi = k.add([
+    k.sprite("vivi"), k.pos(SW * 0.36, CHAR_Y),
+    k.anchor("center"), k.scale(16), k.z(4), k.fixed(),
+  ]);
+  vivi.play("idle-right");
+  const gigi = k.add([
+    k.sprite("gigi"), k.pos(SW * 0.43 + 34, CHAR_Y),
+    k.anchor("center"), k.scale(4), k.z(4), k.fixed(),
+  ]);
+  gigi.play("idle-left");
+
+  // ── HUD: barra de progresso de beijos (esquerda) ──────────────────────────
+  const BAR_W = 200 * SC, BAR_H = 14 * SC;
+  const BAR_X = 16 * SC,  BAR_Y = 30 * SC;
+  const hitsLabel = k.add([
+    k.text(`Beijos: 0/${HITS_TO_WIN}`, { size: fs(8), font: "pressstart2p" }),
+    k.pos(BAR_X, 12 * SC), k.color(255, 255, 255), k.z(41), k.fixed(), "hud",
+  ]);
+  k.add([   // fundo cinza escuro da barra
+    k.rect(BAR_W, BAR_H, { radius: 3 * SC }),
+    k.pos(BAR_X, BAR_Y), k.color(40, 40, 48), k.z(40), k.fixed(), "hud",
+  ]);
+  const barFill = k.add([
+    k.rect(1, BAR_H, { radius: 3 * SC }),
+    k.pos(BAR_X, BAR_Y), k.color(255, 105, 180), k.z(41), k.fixed(), "hud",
+  ]);
+  function updateBar() {
+    hitsLabel.text = `Beijos: ${acertos}/${HITS_TO_WIN}`;
+    const t = Math.min(1, acertos / HITS_TO_WIN);
+    barFill.width = Math.max(1, BAR_W * t);
+    // gradiente de rosa (255,105,180) -> vermelho (220,60,60)
+    barFill.color = k.rgb(
+      Math.round(255 + (220 - 255) * t),
+      Math.round(105 + ( 60 - 105) * t),
+      Math.round(180 + ( 60 - 180) * t),
+    );
+  }
+
+  // ── HUD: vidas (direita) ──────────────────────────────────────────────────
+  k.add([
+    k.text("Vidas:", { size: fs(8), font: "pressstart2p" }),
+    k.pos(SW - 16 * SC, 12 * SC), k.anchor("topright"),
+    k.color(255, 255, 255), k.z(41), k.fixed(), "hud",
+  ]);
+  const hearts = [];
+  for (let i = 0; i < 3; i++) {
+    hearts.push(k.add([
+      k.text("❤️", { size: fs(14) }),
+      k.pos(SW - 16 * SC - (2 - i) * 30 * SC, 30 * SC), k.anchor("top"),
+      k.z(41), k.fixed(), "hud",
+    ]));
+  }
+  function updateLives() {
+    for (let i = 0; i < 3; i++) {
+      hearts[i].text = (i < 3 - erros) ? "❤️" : "\u{1F494}";  // ❤️ / 💔
+    }
+  }
+
+  // ── Texto flutuante (partícula de feedback) ────────────────────────────────
+  function floatText(x, y, txt, col, rise, dur) {
+    const p = k.add([
+      k.text(txt, { size: fs(12), font: "pressstart2p" }),
+      k.pos(x, y), k.anchor("center"),
+      k.color(col[0], col[1], col[2]), k.opacity(1), k.z(16), k.fixed(),
+    ]);
+    if (rise) k.tween(y, y - 30 * SC, dur, v => { p.pos.y = v; });
+    k.tween(1, 0, dur, v => { p.opacity = v; });
+    k.wait(dur, () => { if (p.exists()) p.destroy(); });
+  }
+
+  // ── Spawn de um emoji ──────────────────────────────────────────────────────
+  // Limite vertical em que o emoji deixa de ser clicável (janela reduzida).
+  const CLICK_LIMIT_Y = SH * (0.40 + 0.60 * CLICK_WINDOW_MUL);
+  function spawnEmoji() {
+    const r = Math.random();
+    let isCorrect, char;
+    // Probabilidade de emoji ruim aumentada (BAD_CHANCE); o resto fica para os bons,
+    // mantendo a proporção original beijo:coração de 0.40:0.25.
+    const goodRange = 1 - BAD_CHANCE;
+    const beijoCut  = goodRange * (0.40 / 0.65);
+    if (r < beijoCut)        { isCorrect = true;  char = "\u{1F48B}"; }    // 💋 beijo
+    else if (r < goodRange)  { isCorrect = true;  char = "❤️"; }           // ❤️ coração
+    else                     { isCorrect = false; char = "\u{1F445}"; }    // 👅 língua
+
+    // 15% das línguas vêm em vermelho escuro (armadilha visual); penaliza igual
+    const isTrap = !isCorrect && Math.random() < 0.15;
+
+    const maxSpeed  = (260 + (acertos / HITS_TO_WIN) * 80) * FALL_SPEED_MUL;   // queda ×1.6
+    const vy        = k.rand(140 * FALL_SPEED_MUL, maxSpeed) * SC;    // velocidade de queda dos emojis
+    const amplitude = k.rand(15, 35) * SC;          // oscilação lateral
+    const swaySpeed = k.rand(1.6, 3.2);             // suave e individual
+    const phase     = k.rand(0, Math.PI * 2);
+    const edge      = amplitude + SW * 0.05;        // mantém o emoji dentro da tela
+    const x         = k.rand(edge, SW - edge);
+
+    const e = k.add([
+      k.text(char, { size: fs(28) }),
+      k.pos(x, -40), k.anchor("center"),
+      k.area(), k.z(10), k.fixed(), "femoji",
+      { vy, amplitude, swaySpeed, phase, baseX: x, isCorrect, clicked: false },
+    ]);
+    if (isTrap) e.color = k.rgb(150, 30, 40);
+
+    e.onUpdate(() => {
+      if (paused || gameEnded) return;
+      e.pos.y += e.vy * k.dt();
+      e.pos.x  = e.baseX + Math.sin(k.time() * e.swaySpeed + e.phase) * e.amplitude;
+      // Janela de clique reduzida: após CLICK_LIMIT_Y o emoji escurece e não conta mais
+      if (!e.clicked && e.pos.y > CLICK_LIMIT_Y) { e.clicked = true; e.opacity = 0.35; }
+      if (e.pos.y > SH + 40) e.destroy();   // saiu por baixo: descarta sem penalizar
+    });
+
+    e.onClick(() => {
+      if (paused || gameEnded || e.clicked) return;
+      e.clicked = true;
+      if (e.isCorrect) {
+        acertos++;
+        updateBar();
+        playHitSound();
+        floatText(e.pos.x, e.pos.y, "✨ +1", [255, 240, 120], true, 0.5);
+        e.destroy();
+        if (acertos >= HITS_TO_WIN) onWin();
+      } else {
+        erros++;
+        updateLives();
+        playErrorSound();
+        floatText(e.pos.x, e.pos.y, "✖", [230, 60, 60], false, 0.4);
+        e.destroy();
+        if (erros >= 3) onGameOver();
+      }
+    });
+  }
+
+  function startSpawning() {
+    if (gameEnded) return;
+    spawnLoop = k.loop(0.8, () => {
+      if (paused || gameEnded) return;   // pausa suspende o spawn
+      spawnEmoji();
+    });
+  }
+
+  function stopGame() {
+    gameEnded = true;
+    if (spawnLoop) { spawnLoop.cancel(); spawnLoop = null; }
+    k.get("femoji").forEach(o => o.destroy());
+  }
+
+  // ── Vitória → fade para preto → menu ───────────────────────────────────────
+  function onWin() {
+    if (gameEnded) return;
+    stopGame();
+    playWinSound();
+    const fade = k.add([
+      k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0),
+      k.opacity(0), k.z(70), k.fixed(),
+    ]);
+    k.tween(0, 1, 0.8, v => { fade.opacity = v; })
+      .onEnd(() => { k.go("menu"); });
+  }
+
+  // ── Derrota → fade para preto → menu ───────────────────────────────────────
+  function onGameOver() {
+    if (gameEnded) return;
+    stopGame();
+    const fade = k.add([
+      k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0),
+      k.opacity(0), k.z(70), k.fixed(),
+    ]);
+    k.tween(0, 1, 0.8, v => { fade.opacity = v; })
+      .onEnd(() => { k.go("menu"); });
+  }
+
+  // ── Pause (escape) — só durante o jogo ativo ────────────────────────────────
+  k.onKeyPress("escape", () => {
+    if (gameEnded) return;
+    if (paused) {
+      if (destroyPause) { destroyPause(); destroyPause = null; }
+      paused = false;
+    } else {
+      paused = true;
+      destroyPause = makePauseOverlay(() => {
+        paused = false; destroyPause = null;
+        document.body.style.cursor = "default";
+      });
+    }
+  });
+
+  // ── Título da fase → inicia o spawn após o fade out ─────────────────────────
+  const titleShadow = k.add([
+    k.text("Desafio: A Sintonia", { size: fs(16), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2 + 2 * SC, SH / 2 + 2 * SC), k.anchor("center"),
+    k.color(0, 0, 0), k.opacity(0), k.z(45), k.fixed(),
+  ]);
+  const titleLabel = k.add([
+    k.text("Desafio: A Sintonia", { size: fs(16), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH / 2), k.anchor("center"),
+    k.color(255, 255, 255), k.opacity(0), k.z(46), k.fixed(),
+  ]);
+  k.tween(0, 1, 0.6, v => { titleLabel.opacity = v; titleShadow.opacity = v * 0.6; });
+  k.wait(2.6, () => {
+    k.tween(1, 0, 0.6, v => { titleLabel.opacity = v; titleShadow.opacity = v * 0.6; })
+      .onEnd(() => {
+        if (titleLabel.exists())  titleLabel.destroy();
+        if (titleShadow.exists()) titleShadow.destroy();
+        startSpawning();
+      });
+  });
+
+  updateBar();
+  updateLives();
+});
+
+// ── Cena: CHALLENGE – A SUBIDA (cópia de subida, dificuldade aumentada) ────
+k.scene("challenge_subida", () => {
+  // ── Estado ───────────────────────────────────────────────────────────────
+  let paused       = false;
+  let destroyPause = null;
+  let gameEnded    = false;
+  let started      = false;   // true após a introdução; libera spawn e cronômetro
+  let elapsed      = 0;
+  let erros        = 0;       // colisões sofridas (3 = derrota)
+  let invulnTimer  = 0;       // janela de invencibilidade após apanhar
+  let spawnTimer   = 0;
+
+  // ── Dificuldade aumentada ──────────────────────────────────────────────────
+  const SPAWN_INTERVAL_MUL = 0.7;   // intervalo de spawn 30% mais curto
+  const SPEED_MUL          = 1.5;   // velocidade inicial ×1.5
+  const ACCEL_MUL          = 1.4;   // aceleração ×1.4
+
+  let nextSpawn    = k.rand(1.3, 2.1) * SPAWN_INTERVAL_MUL;
+
+  const SURVIVE_TIME = 28;            // segundos para vencer (era 35)
+  const GROUND_Y     = SH * 0.74;     // linha do chão (pés dos personagens)
+
+  // ── Áudio (Web Audio API) ─────────────────────────────────────────────────
+  let actx = null;
+  function ctxA() { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); return actx; }
+  function beep(freq, type, dur, vol, slideTo) {
+    try {
+      const c = ctxA(), o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type; o.frequency.setValueAtTime(freq, c.currentTime);
+      if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, c.currentTime + dur);
+      g.gain.setValueAtTime(vol * getEffectsVolume(), c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.start(); o.stop(c.currentTime + dur);
+    } catch (e) {}
+  }
+  function playJump()  { beep(520, "sine",   0.12, 0.16, 880); }
+  function playHit()   { beep(200, "square", 0.20, 0.20); }
+  function playBark()  { beep(300, "square", 0.08, 0.18, 190); k.wait(0.11, () => beep(280, "square", 0.08, 0.18, 170)); }
+  function playPop()   { beep(900, "square", 0.06, 0.12); }
+  function playFail()  { beep(420, "sawtooth", 0.5, 0.2, 70); }
+  function playWin()   {
+    try {
+      const c = ctxA();
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const o = c.createOscillator(), g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = "sine"; o.frequency.value = f;
+        const t = c.currentTime + i * 0.14;
+        g.gain.setValueAtTime(0.25 * getEffectsVolume(), t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        o.start(t); o.stop(t + 0.3);
+      });
+    } catch (e) {}
+  }
+
+  // ── Trilha sonora ──────────────────────────────────────────────────────────
+  try {
+    const bgmCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const bgmGain = bgmCtx.createGain();
+    bgmGain.gain.value = getMusicVolume() * 0.18;
+    bgmGain.connect(bgmCtx.destination);
+    const NOTES = [330,392,440,494,659,587,494,440,392,330,440,494,659,587,494,330];
+    const DUR = 0.12;
+    let bgmIdx = 0, bgmTimer = 0;
+    k.onUpdate(() => {
+      bgmTimer += k.dt();
+      if (bgmTimer >= DUR) {
+        bgmTimer = 0;
+        const f = NOTES[bgmIdx % NOTES.length]; bgmIdx++;
+        if (f > 0) {
+          try {
+            const o = bgmCtx.createOscillator(), g = bgmCtx.createGain();
+            o.connect(g); g.connect(bgmGain);
+            o.type = "sawtooth"; o.frequency.value = f;
+            g.gain.setValueAtTime(1, bgmCtx.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, bgmCtx.currentTime + DUR * 0.9);
+            o.start(bgmCtx.currentTime); o.stop(bgmCtx.currentTime + DUR * 0.9);
+          } catch (e) {}
+        }
+      }
+    });
+  } catch (e) {}
+
+  // ── Céu em degradê (dia → por do sol laranja) ─────────────────────────────
+  const SKY_BANDS = 8;
+  const bandH = GROUND_Y / SKY_BANDS;
+  const skyBands = [];
+  for (let i = 0; i < SKY_BANDS; i++) {
+    skyBands.push(k.add([
+      k.rect(SW, bandH + 2), k.pos(0, i * bandH),
+      k.color(0, 0, 0), k.z(0), k.fixed(),
+    ]));
+  }
+  const lerpN = (a, b, t) => a + (b - a) * t;
+  function setSky(p) {
+    const dayTop = [120, 180, 255], dayBot = [205, 232, 255];
+    const sunTop = [ 60,  40, 110], sunBot = [255, 150,  60];
+    const top = dayTop.map((c, i) => lerpN(c, sunTop[i], p));
+    const bot = dayBot.map((c, i) => lerpN(c, sunBot[i], p));
+    skyBands.forEach((b, i) => {
+      const t = SKY_BANDS > 1 ? i / (SKY_BANDS - 1) : 0;
+      b.color = k.rgb(
+        Math.round(lerpN(top[0], bot[0], t)),
+        Math.round(lerpN(top[1], bot[1], t)),
+        Math.round(lerpN(top[2], bot[2], t)),
+      );
+    });
+  }
+  setSky(0);
+
+  // ── Sol ────────────────────────────────────────────────────────────────────
+  const SUN_TOP = GROUND_Y - 150 * SC;
+  const SUN_BOT = GROUND_Y -  18 * SC;
+  const sun = k.add([
+    k.circle(40 * SC), k.pos(SW * 0.70, SUN_TOP), k.anchor("center"),
+    k.color(255, 240, 180), k.opacity(0.95), k.z(1), k.fixed(),
+  ]);
+
+  // ── Morros distantes (parallax lento) ──────────────────────────────────────
+  const hills = [];
+  for (let i = 0; i < 4; i++) {
+    const r = k.rand(90, 150) * SC;
+    hills.push(k.add([
+      k.circle(r), k.pos((i / 4) * (SW + 200 * SC), GROUND_Y + r * 0.5), k.anchor("center"),
+      k.color(90, 70, 120), k.opacity(0.85), k.z(1), k.fixed(),
+    ]));
+  }
+
+  // ── Chão (trilha de montanha) ──────────────────────────────────────────────
+  k.add([k.rect(SW, SH - GROUND_Y + 2), k.pos(0, GROUND_Y), k.color(120, 90, 60), k.z(2), k.fixed()]);
+  k.add([k.rect(SW, 3 * SC), k.pos(0, GROUND_Y), k.color(150, 115, 75), k.z(3), k.fixed()]);
+
+  // Tracinhos na superfície → dão a sensação de movimento
+  const dashes = [];
+  for (let i = 0; i < 16; i++) {
+    dashes.push(k.add([
+      k.rect(28 * SC, 5 * SC, { radius: 2 * SC }),
+      k.pos(k.rand(0, SW), GROUND_Y + k.rand(14 * SC, (SH - GROUND_Y) - 10 * SC)),
+      k.color(95, 70, 45), k.opacity(0.7), k.z(3), k.fixed(),
+    ]));
+  }
+
+  // ── Vivi e Gigi: parados no centro/esquerda, apenas pulando ────────────────
+  const VIVI_SCALE = 8, GIGI_SCALE = 2.2;   // proporção do projeto (vivi ~3.6x gigi)
+  const CHAR_X = SW * 0.30;
+  const vivi = k.add([
+    k.sprite("vivi"), k.pos(CHAR_X, GROUND_Y), k.anchor("bot"),
+    k.scale(VIVI_SCALE), k.opacity(1), k.z(6), k.fixed(),
+  ]);
+  vivi.play("walk-right");
+  const gigi = k.add([
+    k.sprite("gigi"), k.pos(CHAR_X, GROUND_Y), k.anchor("bot"),
+    k.scale(GIGI_SCALE), k.opacity(1), k.z(6), k.fixed(),
+  ]);
+  gigi.play("walk-right");
+
+  // Posiciona os dois lado a lado, centrados em CHAR_X
+  const viviW = (vivi.width  || 10) * VIVI_SCALE;
+  const viviH = (vivi.height || 10) * VIVI_SCALE;
+  const gigiW = (gigi.width  || 10) * GIGI_SCALE;
+  const gigiH = (gigi.height || 10) * GIGI_SCALE;
+  const GAP   = 6 * SC;
+  const pairW = viviW + GAP + gigiW;
+  const pairH = Math.max(viviH, gigiH);
+  const pairLeft = CHAR_X - pairW / 2;
+  vivi.pos.x = pairLeft + viviW / 2;
+  gigi.pos.x = pairLeft + viviW + GAP + gigiW / 2;
+
+  // ── Pulo (controla os DOIS personagens ao mesmo tempo) ─────────────────────
+  const GRAVITY = 2800 * SC;
+  const JUMP_V  = 800  * SC;
+  let vy = 0, jumpOffset = 0, onGround = true;
+  function jump() {
+    if (paused || gameEnded) return;
+    if (onGround) { vy = JUMP_V; onGround = false; playJump(); }
+  }
+  k.onKeyPress("space", jump);
+  k.onMousePress("left", jump);   // toque na tela (touchToMouse) e clique
+
+  // ── Velocidade do mundo (cresce com o tempo) ───────────────────────────────
+  const BASE_SPEED   = 280 * SC * SPEED_MUL;        // velocidade inicial ×1.5
+  const SPEED_GROWTH =   9 * SC * ACCEL_MUL;        // aceleração ×1.4
+  const worldSpeed = () => BASE_SPEED + elapsed * SPEED_GROWTH;
+
+  // ── HUD: vidas (canto superior direito) ────────────────────────────────────
+  const hearts = [];
+  for (let i = 0; i < 3; i++) {
+    hearts.push(k.add([
+      k.text("❤️", { size: fs(14) }),
+      k.pos(SW - 16 * SC - (2 - i) * 30 * SC, 14 * SC), k.anchor("top"),
+      k.z(41), k.fixed(), "hud",
+    ]));
+  }
+  function updateLives() {
+    for (let i = 0; i < 3; i++) hearts[i].text = (i < 3 - erros) ? "❤️" : "\u{1F494}";
+  }
+  updateLives();
+
+  // ── HUD: barra de progresso (canto superior esquerdo) ──────────────────────
+  const PB_W = 200 * SC, PB_H = 12 * SC, PB_X = 16 * SC, PB_Y = 30 * SC;
+  k.add([k.text("⛰️ Rampa do Cristo", { size: fs(7), font: "pressstart2p" }), k.pos(PB_X, 12 * SC), k.color(255, 255, 255), k.z(41), k.fixed(), "hud"]);
+  k.add([k.rect(PB_W, PB_H, { radius: 3 * SC }), k.pos(PB_X, PB_Y), k.color(40, 40, 48), k.z(40), k.fixed(), "hud"]);
+  const pbFill = k.add([k.rect(1, PB_H, { radius: 3 * SC }), k.pos(PB_X, PB_Y), k.color(120, 220, 120), k.z(41), k.fixed(), "hud"]);
+  function updateProgress() {
+    const t = Math.min(1, elapsed / SURVIVE_TIME);
+    pbFill.width = Math.max(1, PB_W * t);
+  }
+
+  // ── Texto flutuante de feedback ────────────────────────────────────────────
+  function floatText(x, y, txt, col) {
+    const p = k.add([
+      k.text(txt, { size: fs(14), font: "pressstart2p" }),
+      k.pos(x, y), k.anchor("center"),
+      k.color(col[0], col[1], col[2]), k.opacity(1), k.z(16), k.fixed(),
+    ]);
+    k.tween(y, y - 30 * SC, 0.5, v => { p.pos.y = v; });
+    k.tween(1, 0, 0.5, v => { p.opacity = v; });
+    k.wait(0.5, () => { if (p.exists()) p.destroy(); });
+  }
+
+  // ── Obstáculos ─────────────────────────────────────────────────────────────
+  // mul = tamanho relativo à altura dos personagens (mantém proporção em qualquer tela)
+  const obstacleTypes = [
+    { sprite: "obs_pedra",    scale: 9,   speedMul: 1.0, sound: null,   anim: null   },
+    { sprite: "obs_galho",    scale: 9,   speedMul: 1.0, sound: null,   anim: null   },
+    { sprite: "obs_cachorro", scale: 7,   speedMul: 1.0, sound: "bark", anim: "run"  },
+    { sprite: "obs_acai",     scale: 10, speedMul: 1.0, sound: "pop",  anim: "ride" },
+    { sprite: "obs_ciclista", scale: 10,   speedMul: 1.7, sound: null,   anim: "ride" },
+  ];
+  function spawnObstacle() {
+    const def = obstacleTypes[Math.floor(Math.random() * obstacleTypes.length)];
+    const ob = k.add([
+      k.sprite(def.sprite),
+      k.pos(SW + 50 * SC, GROUND_Y), k.anchor("bot"),
+      k.scale(def.scale),
+      k.z(5), k.fixed(), "subida-ob",
+      { speedMul: def.speedMul, hitDone: false },
+    ]);
+    if (def.anim) ob.play(def.anim);
+    if (def.sound === "bark") playBark();
+    if (def.sound === "pop")  playPop();
+    return ob;
+  }
+
+  // ── AABB ───────────────────────────────────────────────────────────────────
+  const overlap = (a, b) =>
+    a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+  function charBox() {
+    const w = pairW * 0.62, h = pairH * 0.78;          // caixa generosa (justa para o jogador)
+    const bottom = GROUND_Y - jumpOffset;
+    return { x: CHAR_X - w / 2, y: bottom - h, w, h };
+  }
+  function obBox(ob) {
+  const w = ob.width  * ob.scale.x * 0.60;
+  const h = ob.height * ob.scale.y * 0.4;
+  return { x: ob.pos.x - w / 2, y: ob.pos.y - ob.height * ob.scale.y, w, h };
+}
+
+  function loseLife(ob) {
+    erros++;
+    updateLives();
+    playHit();
+    invulnTimer = 1.0;
+    floatText(ob.pos.x, GROUND_Y - pairH * 0.7, "\u{1F4A5}", [255, 120, 80]);
+    if (erros >= 3) onDeath();
+  }
+
+  // ── Derrota: mensagem cômica rápida → fade para preto → menu ───────────────
+  function onDeath() {
+    if (gameEnded) return;
+    gameEnded = true;
+    playFail();
+    k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0.5), k.z(59), k.fixed()]);
+    k.add([
+      k.text("Vish... \u{1F635}", { size: fs(20), font: "pressstart2p", align: "center" }),
+      k.pos(SW / 2, SH * 0.42), k.anchor("center"),
+      k.color(255, 90, 90), k.z(60), k.fixed(),
+    ]);
+    k.add([
+      k.text("Bora de novo!", { size: fs(9), font: "pressstart2p", align: "center" }),
+      k.pos(SW / 2, SH * 0.55), k.anchor("center"),
+      k.color(255, 255, 255), k.z(60), k.fixed(),
+    ]);
+    const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(70), k.fixed()]);
+    k.wait(1.2, () => {
+      k.tween(0, 1, 0.8, v => { fade.opacity = v; }).onEnd(() => { k.go("menu"); });
+    });
+  }
+
+  // ── Vitória: fade suave → menu ──────────────────────────────────────────────
+  function onWin() {
+    if (gameEnded) return;
+    gameEnded = true;
+    playWin();
+    const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(70), k.fixed()]);
+    k.tween(0, 1, 1.2, v => { fade.opacity = v; }).onEnd(() => { k.go("menu"); });
+  }
+
+  // ── Pause (escape) ─────────────────────────────────────────────────────────
+  k.onKeyPress("escape", () => {
+    if (gameEnded) return;
+    if (paused) {
+      if (destroyPause) { destroyPause(); destroyPause = null; }
+      paused = false;
+    } else {
+      paused = true;
+      destroyPause = makePauseOverlay(() => {
+        paused = false; destroyPause = null;
+        document.body.style.cursor = "default";
+      });
+    }
+  });
+
+  // ── Introdução ─────────────────────────────────────────────────────────────
+  const introBg = k.add([k.rect(SW, 78 * SC), k.pos(SW / 2, SH * 0.30), k.anchor("center"), k.color(18, 4, 32), k.opacity(0), k.z(44), k.fixed()]);
+  const introTxt = k.add([
+    k.text("Ajude Vivi e Gigi a subirem a\nRampa do Cristo!", { size: fs(11), font: "pressstart2p", align: "center", width: SW * 0.82 }),
+    k.pos(SW / 2, SH * 0.30), k.anchor("center"),
+    k.color(255, 245, 255), k.opacity(0), k.z(45), k.fixed(),
+  ]);
+  k.tween(0, 1, 0.5, v => { introTxt.opacity = v; introBg.opacity = v * 0.7; });
+  k.wait(3.5, () => {
+    k.tween(1, 0, 0.5, v => { introTxt.opacity = v; introBg.opacity = v * 0.7; })
+      .onEnd(() => { introTxt.destroy(); introBg.destroy(); started = true; });
+  });
+
+  // ── Loop principal ─────────────────────────────────────────────────────────
+  k.onUpdate(() => {
+    if (paused || gameEnded) return;
+    const dt = k.dt();
+
+    // Pulo (sincronizado nos dois)
+    if (!onGround) {
+      jumpOffset += vy * dt;
+      vy -= GRAVITY * dt;
+      if (jumpOffset <= 0) { jumpOffset = 0; vy = 0; onGround = true; }
+    }
+    vivi.pos.y = GROUND_Y - jumpOffset;
+    gigi.pos.y = GROUND_Y - jumpOffset;
+
+    // Piscar durante a invencibilidade
+    if (invulnTimer > 0) {
+      invulnTimer -= dt;
+      const bl = Math.sin(k.time() * 30) > 0 ? 1 : 0.4;
+      vivi.opacity = bl; gigi.opacity = bl;
+    } else {
+      vivi.opacity = 1; gigi.opacity = 1;
+    }
+
+    // Cenário sempre rola (mesmo durante a introdução)
+    const spd = worldSpeed();
+    const p = Math.min(1, elapsed / SURVIVE_TIME);
+    dashes.forEach(d => {
+      d.pos.x -= spd * dt;
+      if (d.pos.x < -40 * SC) {
+        d.pos.x = SW + k.rand(0, 60 * SC);
+        d.pos.y = GROUND_Y + k.rand(14 * SC, (SH - GROUND_Y) - 10 * SC);
+      }
+    });
+    hills.forEach(h => {
+      h.pos.x -= spd * 0.25 * dt;
+      if (h.pos.x < -h.radius) h.pos.x = SW + h.radius;
+      h.color = k.rgb(Math.round(90 - 45 * p), Math.round(70 - 40 * p), Math.round(120 - 55 * p));
+    });
+    setSky(p);
+    sun.pos.y  = lerpN(SUN_TOP, SUN_BOT, p);
+    sun.color  = k.rgb(255, Math.round(240 - 120 * p), Math.round(180 - 130 * p));
+
+    if (!started) return;
+
+    // Cronômetro / progresso
+    elapsed += dt;
+    updateProgress();
+
+    // Spawn de obstáculos (intervalo encurta com o tempo)
+    spawnTimer += dt;
+    if (spawnTimer >= nextSpawn) {
+      spawnObstacle();
+      spawnTimer = 0;
+      nextSpawn = Math.max(0.8 * SPAWN_INTERVAL_MUL, (k.rand(1.3, 2.1) - elapsed * 0.015) * SPAWN_INTERVAL_MUL);
+    }
+
+    // Move obstáculos + colisão
+    const cb = charBox();
+    k.get("subida-ob").forEach(ob => {
+      ob.pos.x -= spd * ob.speedMul * dt;
+      if (ob.pos.x < -60 * SC) { ob.destroy(); return; }
+      if (!ob.hitDone && invulnTimer <= 0 && overlap(cb, obBox(ob))) {
+        ob.hitDone = true;
+        loseLife(ob);
+      }
+    });
+
+    // Vitória
+    if (elapsed >= SURVIVE_TIME) onWin();
+  });
+});
+
+// ── Cena: CHALLENGE – A BATALHA (cópia de minigame_beijo, dificuldade +) ───
+k.scene("challenge_batalha", () => {
+
+  // ── Constantes ───────────────────────────────────────────────────────────
+  const TILE = 16, TSCALE = 2, TSIZE = TILE * TSCALE;
+  const SPEED       = 180 * SC;
+  const MARGIN      = 20 * SC;
+  const SWING_RANGE = 55 * SC;
+  const SWING_DUR   = 0.15;
+  const SWING_CD    = 0.4;
+  const KISS_DIST   = 22 * SC;
+
+  // ── Dificuldade aumentada ──────────────────────────────────────────────────
+  const ENEMY_SPEED_MUL = 1.5;   // velocidade dos inimigos (beijos) ×1.5
+  const SPAWN_RATE_MUL  = 0.7;   // intervalo de spawn 30% mais curto
+  const DEFEAT_LIMIT    = 4;     // o jogador "perde uma vida": 5 -> 4 beijos sofridos
+  // +5 hits para vencer: ondas com mais inimigos (3->5, 5->8; chefe inalterado)
+
+  // ── Estado ───────────────────────────────────────────────────────────────
+  let paused = false, destroyPause = null, gameEnded = false;
+  let inputBlocked = true;
+  let beijos = 0;
+  let waveNum = 0;
+  let waveEnemies = [];
+  let waveSpawnDone = false;
+  let bossHp = 3;
+  let swingActive = false, swingCooldown = 0, swingTimer = 0;
+  let lastFace = "down";
+  let currentAnim = "idle-down";
+
+  // ── Áudio ────────────────────────────────────────────────────────────────
+  let actx = null;
+  function ctxA() {
+    if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)();
+    return actx;
+  }
+  function beepSnd(freq, type, dur, vol, freqEnd) {
+    try {
+      const c = ctxA(), o = c.createOscillator(), g = c.createGain();
+      o.connect(g); g.connect(c.destination);
+      o.type = type; o.frequency.value = freq;
+      if (freqEnd) o.frequency.exponentialRampToValueAtTime(freqEnd, c.currentTime + dur);
+      g.gain.setValueAtTime(vol * getEffectsVolume(), c.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.001, c.currentTime + dur);
+      o.start(); o.stop(c.currentTime + dur);
+    } catch (e) {}
+  }
+  function playKiss()    { beepSnd(150, "sine",   0.30, 0.18); }
+  function playHit()     { beepSnd(400, "square", 0.15, 0.20, 200); }
+  function playDefeated(){ beepSnd(200, "sine",   0.25, 0.15, 600); }
+  function playVictory() {
+    try {
+      const c = ctxA();
+      [523, 659, 784, 1047].forEach((f, i) => {
+        const t = c.currentTime + i * 0.13;
+        const o = c.createOscillator(), g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.20 * getEffectsVolume(), t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+        o.start(t); o.stop(t + 0.25);
+      });
+    } catch (e) {}
+  }
+  function playBossDefeat() {
+    try {
+      const c = ctxA();
+      [392, 523, 659, 784].forEach((f, i) => {
+        const t = c.currentTime + i * 0.12;
+        const o = c.createOscillator(), g = c.createGain();
+        o.connect(g); g.connect(c.destination);
+        o.type = "sine"; o.frequency.value = f;
+        g.gain.setValueAtTime(0.25 * getEffectsVolume(), t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+        o.start(t); o.stop(t + 0.3);
+      });
+    } catch (e) {}
+  }
+
+  // ── Fundo de tiles ───────────────────────────────────────────────────────
+  const COLS = Math.ceil(SW / TSIZE) + 1;
+  const ROWS = Math.ceil(SH / TSIZE) + 1;
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      k.add([k.sprite(Math.random() < 0.08 ? "flower" : "grass"), k.pos(col * TSIZE, row * TSIZE), k.scale(TSCALE), k.z(0)]);
+    }
+  }
+
+  // ── Gigi (jogador) ───────────────────────────────────────────────────────
+  const gigi = k.add([k.sprite("gigi"), k.pos(SW / 2, SH / 2), k.anchor("center"), k.scale(2.2), k.z(5)]);
+  gigi.play("idle-down");
+
+  function setGigiAnim(name) {
+    if (currentAnim === name) return;
+    currentAnim = name;
+    gigi.play(name);
+  }
+
+  // ── Taco de beisebol ─────────────────────────────────────────────────────
+  const bat = k.add([k.rect(6 * SC, 30 * SC), k.pos(SW / 2, SH / 2), k.anchor("center"), k.color(139, 90, 43), k.scale(1), k.rotate(0), k.z(4)]);
+
+  // ── Joystick virtual ─────────────────────────────────────────────────────
+  const joystick = controlMode === "joystick"
+    ? makeVirtualJoystick(() => inputBlocked || paused)
+    : null;
+
+  // ── HUD ──────────────────────────────────────────────────────────────────
+  const hudKissSh = k.add([k.text(`\u{1F48B} 0/${DEFEAT_LIMIT}`, { size: fs(9), font: "pressstart2p" }), k.pos(11 * SC, 11 * SC), k.color(0, 0, 0), k.opacity(0.6), k.z(20), k.fixed()]);
+  const hudKiss   = k.add([k.text(`\u{1F48B} 0/${DEFEAT_LIMIT}`, { size: fs(9), font: "pressstart2p" }), k.pos( 9 * SC,  9 * SC), k.color(255, 150, 200), k.z(21), k.fixed()]);
+  const hudOndaSh = k.add([k.text("Onda: 1/3", { size: fs(9), font: "pressstart2p" }), k.pos(SW - 11 * SC, 11 * SC), k.anchor("right"), k.color(0, 0, 0), k.opacity(0.6), k.z(20), k.fixed()]);
+  const hudOnda   = k.add([k.text("Onda: 1/3", { size: fs(9), font: "pressstart2p" }), k.pos(SW -  9 * SC,  9 * SC), k.anchor("right"), k.color(255, 240, 100), k.z(21), k.fixed()]);
+  const bossHpLbl = k.add([k.text("Vida: ❤❤❤", { size: fs(9), font: "pressstart2p", align: "center" }), k.pos(SW / 2, 10 * SC), k.anchor("top"), k.color(255, 100, 120), k.z(21), k.fixed()]);
+  bossHpLbl.hidden = true;
+
+  function updateHUD() {
+    const wl = Math.min(waveNum + 1, 3);
+    hudKiss.text = hudKissSh.text = `\u{1F48B} ${beijos}/${DEFEAT_LIMIT}`;
+    hudOnda.text = hudOndaSh.text = `Onda: ${wl}/3`;
+  }
+  function updateBossHud() {
+    bossHpLbl.text = "Vida: " + "❤".repeat(bossHp) + "⬛".repeat(3 - bossHp);
+  }
+
+  // ── Sistema de inimigos ──────────────────────────────────────────────────
+  function spawnEnemy(speed, scale, isBoss) {
+    const side = Math.floor(Math.random() * 4);
+    let sx, sy;
+    if      (side === 0) { sx = k.rand(30 * SC, SW - 30 * SC); sy = -30 * SC; }
+    else if (side === 1) { sx = k.rand(30 * SC, SW - 30 * SC); sy = SH + 30 * SC; }
+    else if (side === 2) { sx = -30 * SC;      sy = k.rand(30 * SC, SH - 30 * SC); }
+    else                 { sx = SW + 30 * SC;  sy = k.rand(30 * SC, SH - 30 * SC); }
+
+    const hCount = isBoss ? 3 : 1;
+    const heartObjs = [];
+    for (let h = 0; h < hCount; h++) {
+      heartObjs.push(k.add([
+        k.text("💗", { size: fs(isBoss ? 10 : 8) }),
+        k.pos(sx, sy - 30 * SC), k.anchor("center"), k.scale(1), k.z(7),
+      ]));
+    }
+
+    const enemy = k.add([
+      k.sprite("vivi"), k.pos(sx, sy), k.anchor("center"), k.scale(scale), k.z(5),
+      { spd: speed, hp: isBoss ? 3 : 1, isBoss, heartObjs, dying: false, kissInvul: 0 },
+    ]);
+    enemy.play("idle-down");
+
+    enemy.onUpdate(() => {
+      if (enemy.dying || gameEnded || !enemy.exists()) return;
+      const ex = enemy.pos.x, ey = enemy.pos.y;
+      const n = enemy.heartObjs.length;
+      enemy.heartObjs.forEach((h, i) => {
+        if (h.exists()) {
+          h.pos.x = ex + (i - (n - 1) / 2) * 18 * SC;
+          h.pos.y = ey - (isBoss ? 42 : 28) * SC;
+        }
+      });
+
+      if (enemy.kissInvul > 0) {
+        enemy.kissInvul -= k.dt();
+        enemy.opacity = Math.sin(k.time() * 20) > 0 ? 1 : 0.3;
+        return;
+      }
+      enemy.opacity = 1;
+
+      const dx = gigi.pos.x - ex, dy = gigi.pos.y - ey;
+      const dist = Math.hypot(dx, dy);
+      if (dist > 0) {
+        enemy.pos.x += (dx / dist) * enemy.spd * k.dt();
+        enemy.pos.y += (dy / dist) * enemy.spd * k.dt();
+        if (Math.abs(dx) >= Math.abs(dy)) {
+          enemy.play(dx > 0 ? "walk-right" : "walk-left");
+        } else {
+          enemy.play(dy > 0 ? "walk-down" : "walk-up");
+        }
+      }
+
+      if (dist < KISS_DIST) receiveKiss(enemy);
+    });
+
+    return enemy;
+  }
+
+  function receiveKiss(enemy) {
+    if (gameEnded || !enemy.exists() || enemy.kissInvul > 0) return;
+    enemy.kissInvul = 1.2;
+    beijos++;
+    updateHUD();
+    playKiss();
+
+    const dx = enemy.pos.x - gigi.pos.x, dy = enemy.pos.y - gigi.pos.y;
+    const d  = Math.hypot(dx, dy) || 1;
+    k.tween(enemy.pos.x, Math.max(30 * SC, Math.min(SW - 30 * SC, enemy.pos.x + (dx / d) * 100 * SC)), 0.3, v => { if (enemy.exists()) enemy.pos.x = v; });
+    k.tween(enemy.pos.y, Math.max(30 * SC, Math.min(SH - 30 * SC, enemy.pos.y + (dy / d) * 100 * SC)), 0.3, v => { if (enemy.exists()) enemy.pos.y = v; });
+
+    const fl = k.add([k.text("💋", { size: fs(14) }), k.pos(gigi.pos.x, gigi.pos.y - 20 * SC), k.anchor("center"), k.z(10), k.fixed()]);
+    k.tween(1, 0, 0.5, v => { if (fl.exists()) fl.opacity = v; });
+    k.wait(0.5, () => { if (fl.exists()) fl.destroy(); });
+
+    if (beijos >= DEFEAT_LIMIT) triggerDefeat();
+  }
+
+  function hitEnemy(enemy) {
+    if (!enemy.exists() || enemy.dying || enemy.kissInvul > 0) return;
+    playHit();
+
+    if (enemy.isBoss) {
+      enemy.hp--;
+      bossHp = enemy.hp;
+      updateBossHud();
+      const h = enemy.heartObjs.pop();
+      if (h && h.exists()) {
+        k.tween(1, 0, 0.2, v => { if (h.exists()) h.opacity = v; });
+        k.wait(0.2, () => { if (h.exists()) h.destroy(); });
+      }
+      if (enemy.hp <= 0) {
+        eliminateEnemy(enemy, true);
+      } else {
+        enemy.kissInvul = 0.5;
+        const dx = enemy.pos.x - gigi.pos.x, dy = enemy.pos.y - gigi.pos.y;
+        const d = Math.hypot(dx, dy) || 1;
+        k.tween(enemy.pos.x, enemy.pos.x + (dx / d) * 80 * SC, 0.2, v => { if (enemy.exists()) enemy.pos.x = v; });
+        k.tween(enemy.pos.y, enemy.pos.y + (dy / d) * 80 * SC, 0.2, v => { if (enemy.exists()) enemy.pos.y = v; });
+      }
+    } else {
+      eliminateEnemy(enemy, false);
+    }
+  }
+
+  function eliminateEnemy(enemy, isBoss) {
+    if (!enemy.exists() || enemy.dying) return;
+    enemy.dying = true;
+    enemy.heartObjs.forEach(h => { if (h.exists()) h.destroy(); });
+    enemy.heartObjs = [];
+
+    for (let i = 0; i < 5; i++) {
+      const ang0 = (i / 5) * Math.PI * 2;
+      const ex0 = enemy.pos.x, ey0 = enemy.pos.y;
+      const s = k.add([
+        k.text("★", { size: fs(8) }), k.pos(ex0, ey0),
+        k.anchor("center"), k.color(255, 220, 50), k.scale(1), k.z(9),
+        { ang: ang0, r: 0, ex: ex0, ey: ey0 },
+      ]);
+      s.onUpdate(() => { s.ang += 4 * k.dt(); s.r = Math.min(s.r + 100 * SC * k.dt(), 40 * SC); s.pos.x = s.ex + Math.cos(s.ang) * s.r; s.pos.y = s.ey + Math.sin(s.ang) * s.r; });
+      k.tween(1, 0, 0.4, v => { if (s.exists()) s.opacity = v; });
+      k.wait(0.4, () => { if (s.exists()) s.destroy(); });
+    }
+
+    if (isBoss) {
+      playBossDefeat();
+      bossHpLbl.hidden = true;
+      for (let i = 0; i < 10; i++) {
+        const ang = (i / 10) * Math.PI * 2;
+        const spd = k.rand(80, 160) * SC;
+        const hh = k.add([
+          k.text("💗", { size: fs(10) }), k.pos(enemy.pos.x, enemy.pos.y),
+          k.anchor("center"), k.scale(1), k.z(8),
+          { vx: Math.cos(ang) * spd, vy: Math.sin(ang) * spd },
+        ]);
+        hh.onUpdate(() => { hh.pos.x += hh.vx * k.dt(); hh.pos.y += hh.vy * k.dt(); });
+        k.tween(1, 0, 0.6, v => { if (hh.exists()) hh.opacity = v; });
+        k.wait(0.6, () => { if (hh.exists()) hh.destroy(); });
+      }
+    } else {
+      playDefeated();
+    }
+
+    const tx = enemy.pos.x < SW / 2 ? -60 * SC : SW + 60 * SC;
+    const ty = enemy.pos.y < SH / 2 ? -60 * SC : SH + 60 * SC;
+    k.tween(enemy.pos.x, tx, 0.3, v => { if (enemy.exists()) enemy.pos.x = v; });
+    k.tween(enemy.pos.y, ty, 0.3, v => { if (enemy.exists()) enemy.pos.y = v; });
+    k.wait(0.32, () => {
+      if (enemy.exists()) enemy.destroy();
+      waveEnemies = waveEnemies.filter(e => e !== enemy);
+      k.wait(0.05, checkWaveDone);
+    });
+  }
+
+  function checkWaveDone() {
+    if (gameEnded || !waveSpawnDone) return;
+    const alive = waveEnemies.filter(e => e.exists() && !e.dying);
+    if (alive.length === 0) {
+      waveEnemies = [];
+      if (waveNum >= 2) {
+        triggerVictory();
+      } else {
+        waveNum++;
+        updateHUD();
+        k.wait(0.5, () => showWaveBanner(waveNum + 1, () => startWave(waveNum)));
+      }
+    }
+  }
+
+  // ── Ondas ────────────────────────────────────────────────────────────────
+  function startWave(wn) {
+    waveSpawnDone = false;
+    const cfgs = [
+      { count: 5, speed: 70  * SC * ENEMY_SPEED_MUL, scale: 8, interval: 1.5 * SPAWN_RATE_MUL, boss: false },
+      { count: 8, speed: 100 * SC * ENEMY_SPEED_MUL, scale: 8, interval: 1.0 * SPAWN_RATE_MUL, boss: false },
+      { count: 1, speed: 55  * SC * ENEMY_SPEED_MUL, scale: 12, interval: 0,                    boss: true  },
+    ];
+    const cfg = cfgs[wn];
+    if (cfg.boss) { bossHpLbl.hidden = false; bossHp = 3; updateBossHud(); }
+
+    let spawned = 0;
+    function doSpawn() {
+      if (gameEnded) return;
+      const e = spawnEnemy(cfg.speed, cfg.scale, cfg.boss);
+      waveEnemies.push(e);
+      spawned++;
+      if (spawned < cfg.count) {
+        k.wait(cfg.interval, doSpawn);
+      } else {
+        waveSpawnDone = true;
+        k.wait(0.1, checkWaveDone);
+      }
+    }
+    doSpawn();
+  }
+
+  function showWaveBanner(num, onDone) {
+    inputBlocked = true;
+    const tx  = `Onda ${num}!`;
+    const sh  = k.add([k.text(tx, { size: fs(16), font: "pressstart2p", align: "center" }), k.pos(SW / 2 + 2 * SC, SH / 2 + 2 * SC), k.anchor("center"), k.scale(0), k.color(0, 0, 0), k.z(30), k.fixed()]);
+    const lbl = k.add([k.text(tx, { size: fs(16), font: "pressstart2p", align: "center" }), k.pos(SW / 2,           SH / 2),           k.anchor("center"), k.scale(0), k.color(255, 220, 50), k.z(31), k.fixed()]);
+    k.tween(0, 1.1, 0.2, v => { lbl.scale.x = v; lbl.scale.y = v; sh.scale.x = v; sh.scale.y = v; });
+    k.wait(0.22, () => k.tween(1.1, 1.0, 0.1, v => { lbl.scale.x = v; lbl.scale.y = v; sh.scale.x = v; sh.scale.y = v; }));
+    k.wait(2.0, () => {
+      k.tween(1, 0, 0.2, v => { lbl.opacity = v; sh.opacity = v; });
+      k.wait(0.22, () => {
+        if (lbl.exists()) lbl.destroy();
+        if (sh.exists())  sh.destroy();
+        inputBlocked = false;
+        if (onDone) onDone();
+      });
+    });
+  }
+
+  // ── Vitória / Derrota → fade para preto → menu ─────────────────────────────
+  function triggerDefeat() {
+    if (gameEnded) return;
+    gameEnded = true; inputBlocked = true;
+    const lbl = k.add([k.text("Vivi ganhou hoje... 💋", { size: fs(9), font: "pressstart2p", align: "center", width: SW * 0.7 }), k.pos(SW / 2, SH / 2), k.anchor("center"), k.color(255, 100, 150), k.z(40), k.fixed()]);
+    const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(80), k.fixed()]);
+    k.wait(1.2, () => {
+      if (lbl.exists()) lbl.destroy();
+      k.tween(0, 1, 1.0, v => { fade.opacity = v; }).onEnd(() => { k.go("menu"); });
+    });
+  }
+
+  function triggerVictory() {
+    if (gameEnded) return;
+    gameEnded = true; inputBlocked = true;
+    playVictory();
+
+    const vsh = k.add([k.text("Gigi venceu! 🏆", { size: fs(11), font: "pressstart2p", align: "center", width: SW * 0.8 }), k.pos(SW / 2 + 2 * SC, SH / 2 - 18 * SC), k.anchor("center"), k.scale(0), k.color(0, 0, 0), k.z(39), k.fixed()]);
+    const vlb = k.add([k.text("Gigi venceu! 🏆", { size: fs(11), font: "pressstart2p", align: "center", width: SW * 0.8 }), k.pos(SW / 2,           SH / 2 - 20 * SC), k.anchor("center"), k.scale(0), k.color(255, 220, 50), k.z(40), k.fixed()]);
+    k.tween(0, 1.1, 0.25, v => { vlb.scale.x = v; vlb.scale.y = v; vsh.scale.x = v; vsh.scale.y = v; });
+    k.wait(0.27, () => k.tween(1.1, 1.0, 0.12, v => { vlb.scale.x = v; vlb.scale.y = v; vsh.scale.x = v; vsh.scale.y = v; }));
+
+    for (let i = 0; i < 12; i++) {
+      k.wait(i * 0.12, () => {
+        if (gameEnded) {
+          const vy = -k.rand(40, 90) * SC;
+          const hh = k.add([k.text("💗", { size: fs(k.rand(8, 14)) }), k.pos(k.rand(0, SW), k.rand(0, SH)), k.anchor("center"), k.scale(1), k.z(25), k.fixed(), { vy }]);
+          hh.onUpdate(() => { hh.pos.y += hh.vy * k.dt(); });
+          k.tween(1, 0, 1.0, v => { if (hh.exists()) hh.opacity = v; });
+          k.wait(1.0, () => { if (hh.exists()) hh.destroy(); });
+        }
+      });
+    }
+
+    const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(80), k.fixed()]);
+    k.wait(2.0, () => {
+      k.tween(0, 1, 1.0, v => { fade.opacity = v; }).onEnd(() => { k.go("menu"); });
+    });
+  }
+
+  // ── Swing do taco ────────────────────────────────────────────────────────
+  function doSwing() {
+    if (inputBlocked || paused || swingActive || swingCooldown > 0 || gameEnded) return;
+    swingActive = true; swingTimer = 0;
+
+    k.wait(SWING_DUR * 0.5, () => {
+      if (gameEnded) return;
+      const dirs = { left: [-1, 0], right: [1, 0], up: [0, -1], down: [0, 1] };
+      const [dx, dy] = dirs[lastFace] || [0, 1];
+      const cx = gigi.pos.x + dx * SWING_RANGE * 0.6;
+      const cy = gigi.pos.y + dy * SWING_RANGE * 0.6;
+      waveEnemies.forEach(e => {
+        if (!e.exists() || e.dying || e.kissInvul > 0) return;
+        if (Math.hypot(e.pos.x - cx, e.pos.y - cy) < SWING_RANGE) hitEnemy(e);
+      });
+    });
+
+    k.wait(SWING_DUR, () => { swingActive = false; swingTimer = 0; swingCooldown = SWING_CD; });
+  }
+
+  // ── Controles ────────────────────────────────────────────────────────────
+  k.onKeyDown("left",  () => { if (inputBlocked || paused) return; gigi.move(-SPEED, 0); setGigiAnim("walk-left");  lastFace = "left";  });
+  k.onKeyDown("right", () => { if (inputBlocked || paused) return; gigi.move( SPEED, 0); setGigiAnim("walk-right"); lastFace = "right"; });
+  k.onKeyDown("up",    () => { if (inputBlocked || paused) return; gigi.move(0, -SPEED); setGigiAnim("walk-up");    lastFace = "up";    });
+  k.onKeyDown("down",  () => { if (inputBlocked || paused) return; gigi.move(0,  SPEED); setGigiAnim("walk-down");  lastFace = "down";  });
+  k.onKeyDown("a",     () => { if (inputBlocked || paused) return; gigi.move(-SPEED, 0); setGigiAnim("walk-left");  lastFace = "left";  });
+  k.onKeyDown("d",     () => { if (inputBlocked || paused) return; gigi.move( SPEED, 0); setGigiAnim("walk-right"); lastFace = "right"; });
+  k.onKeyDown("w",     () => { if (inputBlocked || paused) return; gigi.move(0, -SPEED); setGigiAnim("walk-up");    lastFace = "up";    });
+  k.onKeyDown("s",     () => { if (inputBlocked || paused) return; gigi.move(0,  SPEED); setGigiAnim("walk-down");  lastFace = "down";  });
+
+  k.onKeyRelease(() => {
+    const any = k.isKeyDown("left") || k.isKeyDown("right") || k.isKeyDown("up")   || k.isKeyDown("down") ||
+                k.isKeyDown("a")    || k.isKeyDown("d")     || k.isKeyDown("w")     || k.isKeyDown("s");
+    if (!any && !inputBlocked) setGigiAnim("idle-" + lastFace);
+  });
+
+  k.onKeyPress("space",  () => { doSwing(); });
+  k.onMousePress("left", () => { doSwing(); });
+
+  k.onKeyPress("escape", () => {
+    if (gameEnded) return;
+    if (paused) { if (destroyPause) { destroyPause(); destroyPause = null; } paused = false; }
+    else        { paused = true; destroyPause = makePauseOverlay(() => { paused = false; destroyPause = null; }); }
+  });
+
+  // ── Loop principal ───────────────────────────────────────────────────────
+  k.onUpdate(() => {
+    if (paused || gameEnded) return;
+
+    gigi.pos.x = Math.max(MARGIN, Math.min(SW - MARGIN, gigi.pos.x));
+    gigi.pos.y = Math.max(MARGIN, Math.min(SH - MARGIN, gigi.pos.y));
+
+    if (!inputBlocked) {
+      const any = k.isKeyDown("left") || k.isKeyDown("right") || k.isKeyDown("up")   || k.isKeyDown("down") ||
+                  k.isKeyDown("a")    || k.isKeyDown("d")     || k.isKeyDown("w")     || k.isKeyDown("s");
+      if (joystick) {
+        joystick.tick();
+        if (joystick.isActive()) {
+          const { x: jx, y: jy } = joystick.getDir();
+          if (Math.abs(jx) > 0.15 || Math.abs(jy) > 0.15) {
+            gigi.move(jx * SPEED, jy * SPEED);
+            if (Math.abs(jx) >= Math.abs(jy)) { setGigiAnim(jx > 0 ? "walk-right" : "walk-left"); lastFace = jx > 0 ? "right" : "left"; }
+            else                               { setGigiAnim(jy > 0 ? "walk-down"  : "walk-up");   lastFace = jy > 0 ? "down"  : "up";   }
+          } else if (!any) { setGigiAnim("idle-" + lastFace); }
+        } else if (!any) { setGigiAnim("idle-" + lastFace); }
+      } else if (!any) { setGigiAnim("idle-" + lastFace); }
+    }
+
+    if (swingCooldown > 0) swingCooldown -= k.dt();
+    if (swingActive) swingTimer = Math.min(swingTimer + k.dt(), SWING_DUR);
+
+    const faceAngles = { right: -90, down: 0, left: 90, up: 180 };
+    const foff       = { right: [18 * SC, 0], left: [-18 * SC, 0], up: [0, -18 * SC], down: [0, 18 * SC] };
+    const [fox, foy] = foff[lastFace] || [0, 18 * SC];
+    bat.pos.x = gigi.pos.x + fox;
+    bat.pos.y = gigi.pos.y + foy;
+    bat.angle = (faceAngles[lastFace] || 0) + (swingActive ? (swingTimer / SWING_DUR) * 90 - 30 : 0);
+  });
+
+  // ── Sequência inicial ────────────────────────────────────────────────────
+  const tsh = k.add([k.text("Desafio: A Batalha", { size: fs(14), font: "pressstart2p", align: "center", width: SW * 0.8 }), k.pos(SW / 2 + 2 * SC, SH / 2 + 2 * SC), k.anchor("center"), k.scale(0), k.color(0, 0, 0),     k.z(40), k.fixed()]);
+  const tlb = k.add([k.text("Desafio: A Batalha", { size: fs(14), font: "pressstart2p", align: "center", width: SW * 0.8 }), k.pos(SW / 2,           SH / 2),           k.anchor("center"), k.scale(0), k.color(255, 220, 50), k.z(41), k.fixed()]);
+  k.tween(0, 1.1, 0.25, v => { tlb.scale.x = v; tlb.scale.y = v; tsh.scale.x = v; tsh.scale.y = v; });
+  k.wait(0.27, () => k.tween(1.1, 1.0, 0.12, v => { tlb.scale.x = v; tlb.scale.y = v; tsh.scale.x = v; tsh.scale.y = v; }));
+  k.wait(2.2, () => {
+    k.tween(1, 0, 0.3, v => { tlb.opacity = v; tsh.opacity = v; });
+    k.wait(0.35, () => {
+      if (tlb.exists()) tlb.destroy();
+      if (tsh.exists()) tsh.destroy();
+      showWaveBanner(1, () => startWave(0));
+    });
+  });
+});
+
+// ── Cena: SELECIONAR MINI-GAME ───────────────────────────────────────────
+k.scene("selecionar_minigame", () => {
+  const TILE  = 16;
+  const SCALE = 2;
+  const TSIZE = TILE * SCALE;
+  const COLS  = Math.ceil(SW / TSIZE) + 1;
+  const ROWS  = Math.ceil(SH / TSIZE) + 1;
+
+  for (let row = 0; row < ROWS; row++) {
+    for (let col = 0; col < COLS; col++) {
+      const isFlower = Math.random() < 0.15;
+      k.add([
+        k.sprite(isFlower ? "flower" : "grass"),
+        k.pos(col * TSIZE, row * TSIZE),
+        k.scale(SCALE),
+        k.z(0),
+      ]);
+    }
+  }
+
+  const cornerSpawns = [
+    { x: 40,      y: 40      },
+    { x: SW - 40, y: 40      },
+    { x: 40,      y: SH - 40 },
+    { x: SW - 40, y: SH - 40 },
+  ];
+  cornerSpawns.forEach(({ x, y }) => {
+    const spd = k.rand(18, 32);
+    const dir = x < SW / 2 ? 1 : -1;
+    const bt  = k.add([
+      k.sprite("butterfly", { anim: "fly" }),
+      k.pos(x, y), k.scale(1.6), k.z(1),
+      { spd, dir, ox: x },
+    ]);
+    bt.onUpdate(() => {
+      bt.move(bt.spd * bt.dir, Math.sin(k.time() * 2 + bt.ox * 0.01) * 14);
+      if (bt.pos.x > SW + 24) bt.pos.x = -24;
+      if (bt.pos.x < -24)     bt.pos.x = SW + 24;
+    });
+  });
+
+  // Borda do painel
+  k.add([
+    k.rect(280 * SC, 368 * SC, { radius: 18 * SC }),
+    k.pos(SW / 2, SH / 2),
+    k.anchor("center"),
+    k.color(240, 110, 160),
+    k.opacity(0.97),
+    k.z(4),
+  ]);
+
+  // Painel rosado
+  k.add([
+    k.rect(272 * SC, 360 * SC, { radius: 15 * SC }),
+    k.pos(SW / 2, SH / 2),
+    k.anchor("center"),
+    k.color(255, 215, 232),
+    k.opacity(0.93),
+    k.z(5),
+  ]);
+
+  // Título
+  k.add([
+    k.text("Mini-games", { size: fs(16), font: "pressstart2p", align: "center", width: 252 * SC }),
+    k.pos(SW / 2, SH / 2 - 122 * SC),
+    k.anchor("center"),
+    k.color(170, 28, 88),
+    k.z(6),
+  ]);
+
+  // Botões dos mini-games
+  const minigamesData = [
+    { label: "O Campinho", scene: "challenge_campinho", color: [100, 160, 255] },
+    { label: "A Sintonia", scene: "challenge_sintonia", color: [180,  60,  80] },
+    { label: "A Subida",   scene: "challenge_subida",   color: [240, 140,  50] },
+    { label: "A Batalha",  scene: "challenge_batalha",  color: [220,  80, 140] },
+  ];
+
+  minigamesData.forEach((mg, i) => {
+    const base  = mg.color;
+    const hover = [Math.min(255, base[0] + 25), Math.min(255, base[1] + 25), Math.min(255, base[2] + 25)];
+    const y = SH / 2 - 70 * SC + i * 52 * SC;
+    const btn = k.add([
+      k.rect(230 * SC, 40 * SC, { radius: 10 * SC }),
+      k.pos(SW / 2, y),
+      k.anchor("center"),
+      k.color(base[0], base[1], base[2]),
+      k.area(),
+      k.z(6),
+    ]);
+    k.add([
+      k.text(mg.label, { size: fs(8), font: "pressstart2p", align: "center", width: 215 * SC }),
+      k.pos(SW / 2, y),
+      k.anchor("center"),
+      k.color(255, 255, 255),
+      k.z(7),
+    ]);
+    btn.onHover(() => { btn.color = k.rgb(hover[0], hover[1], hover[2]); document.body.style.cursor = "pointer"; });
+    btn.onHoverEnd(() => { btn.color = k.rgb(base[0], base[1], base[2]); document.body.style.cursor = "default"; });
+    btn.onClick(() => { document.body.style.cursor = "default"; k.go(mg.scene); });
+  });
+
+  // Botão Voltar
+  const voltarBtn = k.add([
+    k.rect(230 * SC, 34 * SC, { radius: 10 * SC }),
+    k.pos(SW / 2, SH / 2 + 136 * SC),
+    k.anchor("center"),
+    k.color(130, 130, 145),
+    k.area(),
+    k.z(6),
+  ]);
+  k.add([
+    k.text("< Voltar", { size: fs(9), font: "pressstart2p", align: "center" }),
+    k.pos(SW / 2, SH / 2 + 136 * SC),
+    k.anchor("center"),
+    k.color(255, 255, 255),
+    k.z(7),
+  ]);
+  voltarBtn.onHover(() => {
+    voltarBtn.color = k.rgb(160, 160, 175);
+    document.body.style.cursor = "pointer";
+  });
+  voltarBtn.onHoverEnd(() => {
+    voltarBtn.color = k.rgb(130, 130, 145);
+    document.body.style.cursor = "default";
+  });
+  voltarBtn.onClick(() => {
+    document.body.style.cursor = "default";
+    k.go("selecionar_fase");
+  });
+});
+
 // ── Cena: CONFIGURAÇÕES ──────────────────────────────────────────────────
 k.scene("configuracoes", () => {
   // Mesmo fundo do menu
@@ -5362,7 +7594,7 @@ k.scene("final", () => {
     { angle: 3,  caption: "Missao das flores 🌸",  bgColor: [120, 185, 120], vx: -35, vy: 20, gx: 28, gy: 20, detail: { t: "🌸", fs: 13, x: 58, y: -55 } },
     { angle: -2, caption: "Primeiro beijo 💋",      bgColor: [200, 155, 185], vx: -18, vy: 20, gx: 16, gy: 20, detail: { t: "💋", fs: 13, x:  0, y: -50 } },
     { angle: 2,  caption: "Rampa do Cristo 🌅",     bgColor: [210, 130,  60], vx: -35, vy: 20, gx: 28, gy: 20, detail: { t: "🌅", fs: 13, x: 62, y: -52 } },
-    { angle: -3, caption: "28 de junho de 2025 💛", bgColor: [ 80, 110, 190], vx: -38, vy: 20, gx: 30, gy: 20, detail: { t: "❤️", fs: 11, x: -4, y: -50 } },
+    { angle: -3, caption: "28 de junho de 2026 ❤️", bgColor: [ 80, 110, 190], vx: -38, vy: 20, gx: 30, gy: 20, detail: { t: "💛", fs: 11, x: -4, y: -50 } },
   ];
 
   // ── Momento 2: Mensagem do Vini ───────────────────────────────────────────
@@ -5418,81 +7650,75 @@ k.scene("final", () => {
     typeNextLine();
   }
 
-  // ── Momento 3: Créditos ───────────────────────────────────────────────────
+  // ── Momento 3: Recompensa ─────────────────────────────────────────────────
   function startMoment3() {
     heartsActive = false;
-    stopMusic(4.5);
 
-    m2Els.forEach(e => { if (e.exists()) k.tween(e.opacity, 0, 0.7, v => { if (e.exists()) e.opacity = v; }); });
-    hParts.forEach(h => { if (h.exists()) k.tween(h.opacity, 0, 0.7, v => { if (h.exists()) h.opacity = v; }); });
-    if (blackBg.exists()) k.tween(1, 0, 0.7, v => { if (blackBg.exists()) blackBg.opacity = v; });
-
-    k.wait(0.85, () => {
+    // Overlay preto cobre o momento 2 (evita depender de opacity em elementos sem o componente)
+    const coverFade = k.add([k.rect(SW, SH), k.pos(0,0), k.color(0,0,0), k.opacity(0), k.z(30), k.fixed()]);
+    k.tween(0, 1, 0.6, v => { if (coverFade.exists()) coverFade.opacity = v; }).onEnd(() => {
       m2Els.forEach(e => { if (e.exists()) e.destroy(); });
       hParts.forEach(h => { if (h.exists()) h.destroy(); });
-      if (blackBg.exists()) blackBg.destroy();
+      if (coverFade.exists()) coverFade.destroy();
 
-      // Céu pôr do sol
-      const GROUND_Y = SH * 0.68;
-      const N_BANDS = 8, bandH = GROUND_Y / N_BANDS;
-      const SKY_TOP = [60, 40, 110], SKY_BOT = [255, 150, 60];
-      for (let i = 0; i < N_BANDS; i++) {
-        const t = i / (N_BANDS - 1);
-        k.add([k.rect(SW, bandH + 2), k.pos(0, i * bandH), k.color(
-          Math.round(SKY_TOP[0] + (SKY_BOT[0] - SKY_TOP[0]) * t),
-          Math.round(SKY_TOP[1] + (SKY_BOT[1] - SKY_TOP[1]) * t),
-          Math.round(SKY_TOP[2] + (SKY_BOT[2] - SKY_TOP[2]) * t),
-        ), k.z(0), k.fixed()]);
-      }
-      k.add([k.rect(SW, SH - GROUND_Y + 4), k.pos(0, GROUND_Y), k.color(55, 120, 55), k.z(1), k.fixed()]);
-      k.add([k.circle(60 * SC), k.pos(SW * 0.70, GROUND_Y - 30*SC), k.anchor("center"), k.color(255, 200, 100), k.opacity(0.28), k.z(2), k.fixed()]);
-      k.add([k.circle(50 * SC), k.pos(SW * 0.70, GROUND_Y - 30*SC), k.anchor("center"), k.color(255, 165,  60), k.opacity(0.90), k.z(3), k.fixed()]);
+      // "Obrigado por jogar!" com fade-in
+      const thanksTxt = k.add([
+        k.text("Obrigado por jogar!", { size: fs(11), font: "pressstart2p", align: "center", width: SW * 0.85 }),
+        k.pos(SW / 2, SH * 0.35), k.anchor("center"),
+        k.color(255, 255, 255), k.opacity(0), k.z(15), k.fixed(),
+      ]);
+      k.tween(0, 1, 0.7, v => { if (thanksTxt.exists()) thanksTxt.opacity = v; });
 
-      // Personagens frente a frente
-      const charY = GROUND_Y - 2 * SC;
-      const v3 = k.add([k.sprite("vivi"), k.pos(SW * 0.44, charY), k.anchor("bot"), k.scale(8.5), k.z(5), k.fixed()]);
-      v3.play("idle-right");
-      const g3 = k.add([k.sprite("gigi"), k.pos(SW * 0.56, charY), k.anchor("bot"), k.scale(2.2), k.z(5), k.fixed()]);
-      g3.play("idle-left");
-      const heartF = k.add([k.text("💛", { size: fs(10) }), k.pos(SW * 0.50, charY - 52*SC), k.anchor("center"), k.z(6), k.fixed(), { hft: 0 }]);
-      heartF.onUpdate(() => { heartF.hft += k.dt(); heartF.pos.y = charY - 52*SC + Math.sin(heartF.hft * 2.5) * 8 * SC; });
+      // Caixinha rosa com laço (k.scale(1) necessário para o pulso)
+      const BOX_W  = 50 * SC, BOX_H  = 50 * SC;
+      const BOX_Y1 = SH * 0.55;
+      const BOX_Y0 = SH + 60 * SC;
+      const BOW_OFF = BOX_H / 2 + 8 * SC;
 
-      // Créditos
-      const creditData = [
-        { text: "Momoris Gigica",           size: 16, color: [255, 220,  50], shad: true  },
-        { text: "feito com muito amor",     size:  8, color: [255, 255, 255], shad: false },
-        { text: "por Vini, para a Gigi 💛", size:  8, color: [255, 255, 255], shad: false },
-        { text: "28 de junho de 2025",      size:  7, color: [200, 200, 200], shad: false },
-      ];
-      const creditY = [SH * 0.10, SH * 0.26, SH * 0.36, SH * 0.46];
-      creditData.forEach((c, i) => {
-        const delay = i * 0.9;
-        if (c.shad) {
-          const sh = k.add([k.text(c.text, { size: fs(c.size), font: "pressstart2p", align: "center" }), k.pos(SW/2 + 2*SC, creditY[i] + 2*SC), k.anchor("center"), k.color(0, 0, 0), k.opacity(0), k.z(9), k.fixed()]);
-          k.wait(delay, () => k.tween(0, 0.85, 0.5, v => { if (sh.exists()) sh.opacity = v; }));
-        }
-        const lbl = k.add([k.text(c.text, { size: fs(c.size), font: "pressstart2p", align: "center" }), k.pos(SW/2, creditY[i]), k.anchor("center"), k.color(...c.color), k.opacity(0), k.z(10), k.fixed()]);
-        k.wait(delay, () => k.tween(0, 1, 0.5, v => { if (lbl.exists()) lbl.opacity = v; }));
+      const boxBody = k.add([k.rect(BOX_W, BOX_H), k.pos(SW/2, BOX_Y0), k.anchor("center"), k.color(255,105,180), k.opacity(0), k.scale(1), k.z(15), k.fixed()]);
+      const hRib   = k.add([k.rect(BOX_W + 6*SC, 5*SC), k.pos(SW/2, BOX_Y0), k.anchor("center"), k.color(255,255,255), k.opacity(0), k.scale(1), k.z(16), k.fixed()]);
+      const vRib   = k.add([k.rect(5*SC, BOX_H), k.pos(SW/2, BOX_Y0), k.anchor("center"), k.color(255,255,255), k.opacity(0), k.scale(1), k.z(16), k.fixed()]);
+      const bow1   = k.add([k.rect(24*SC, 5*SC), k.pos(SW/2, BOX_Y0 - BOW_OFF), k.anchor("center"), k.rotate(40), k.color(255,255,255), k.opacity(0), k.scale(1), k.z(17), k.fixed()]);
+      const bow2   = k.add([k.rect(24*SC, 5*SC), k.pos(SW/2, BOX_Y0 - BOW_OFF), k.anchor("center"), k.rotate(-40), k.color(255,255,255), k.opacity(0), k.scale(1), k.z(17), k.fixed()]);
+      const boxEls = [boxBody, hRib, vRib, bow1, bow2];
+
+      let boxPulse = false;
+      k.onUpdate(() => {
+        if (!boxPulse) return;
+        const s = 1 + 0.05 * Math.sin(k.time() * 3);
+        boxEls.forEach(b => { if (b.exists()) { b.scale.x = s; b.scale.y = s; } });
       });
 
-      // Prompt pisca após créditos + 3s
-      let canRestart = false, blinkT = 0;
-      const restartLbl = k.add([k.text("Toque para recomecar", { size: fs(7), font: "pressstart2p", align: "center" }), k.pos(SW/2, SH * 0.60), k.anchor("center"), k.color(180, 180, 180), k.opacity(0), k.z(10), k.fixed()]);
-      k.wait(creditData.length * 0.9 + 3.0, () => {
-        canRestart = true;
-        restartLbl.onUpdate(() => { blinkT += k.dt(); restartLbl.opacity = Math.sin(blinkT * 4) > 0 ? 1 : 0; });
-      });
+      k.wait(0.6, () => {
+        [boxBody, hRib, vRib].forEach(b => {
+          k.tween(BOX_Y0, BOX_Y1, 0.65, v => { if (b.exists()) b.pos.y = v; });
+          k.tween(0, 1, 0.55, v => { if (b.exists()) b.opacity = v; });
+        });
+        [bow1, bow2].forEach(b => {
+          k.tween(BOX_Y0 - BOW_OFF, BOX_Y1 - BOW_OFF, 0.65, v => { if (b.exists()) b.pos.y = v; });
+          k.tween(0, 1, 0.55, v => { if (b.exists()) b.opacity = v; });
+        });
 
-      function doRestart() {
-        if (!canRestart) return;
-        canRestart = false;
-        stopMusic(0);
-        const fade = k.add([k.rect(SW, SH), k.pos(0, 0), k.color(0, 0, 0), k.opacity(0), k.z(80), k.fixed()]);
-        k.tween(0, 1, 0.8, v => { if (fade.exists()) fade.opacity = v; }).onEnd(() => k.go("menu"));
-      }
-      k.onKeyPress("space",  doRestart);
-      k.onKeyPress("return", doRestart);
-      k.onClick(doRestart);
+        k.wait(0.75, () => {
+          boxPulse = true;
+
+          // Botão "Coletar recompensa"
+          const bBrd = k.add([k.rect(238*SC, 48*SC, { radius: 10*SC }), k.pos(SW/2, SH*0.75), k.anchor("center"), k.color(255,105,180), k.opacity(0), k.z(14), k.fixed()]);
+          const bBod = k.add([k.rect(232*SC, 42*SC, { radius:  8*SC }), k.pos(SW/2, SH*0.75), k.anchor("center"), k.color(18,4,32), k.opacity(0), k.area(), k.z(15), k.fixed()]);
+          const bLbl = k.add([k.text("Coletar recompensa", { size: fs(8), font: "pressstart2p", align: "center", width: 220*SC }), k.pos(SW/2, SH*0.75), k.anchor("center"), k.color(255,255,255), k.opacity(0), k.z(16), k.fixed()]);
+
+          [bBrd, bBod, bLbl].forEach(b => { k.tween(0, 1, 0.5, v => { if (b.exists()) b.opacity = v; }); });
+
+          bBod.onHover(() => { bBod.color = k.rgb(40,10,60); document.body.style.cursor = "pointer"; });
+          bBod.onHoverEnd(() => { bBod.color = k.rgb(18,4,32); document.body.style.cursor = "default"; });
+          bBod.onClick(() => {
+            document.body.style.cursor = "default";
+            stopMusic(0.8);
+            const fade = k.add([k.rect(SW, SH), k.pos(0,0), k.color(0,0,0), k.opacity(0), k.z(80), k.fixed()]);
+            k.tween(0, 1, 0.8, v => { if (fade.exists()) fade.opacity = v; }).onEnd(() => k.go("menu"));
+          });
+        });
+      });
     });
   }
 
